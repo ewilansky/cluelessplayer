@@ -27,7 +27,11 @@ class AutoClientUnitTest(unittest.TestCase):
         self.assertTrue(3 <= len(self.cards) <= 6)
 
     def test_should_state_invalid_number_of_cards_dealt(self):
-        pass
+        dealt_cards = ['Wrench', 'White', 'Study', 'Plum', 'Mustard', 'Knife', 'Scarlet']
+
+        self.cards = self.player.receive_cards(dealt_cards)
+
+        self.assertRaises(IndexError)
 
     def test_should_state_cards_are_invalid(self):
         # will have an enumeration of valid cards to work with

@@ -16,7 +16,7 @@ class Player:
             # instance variables needed for game play
             self.dealt_cards = []
         else:
-            raise Exception("no more than 5 computer players allowed")
+            raise IndexError('no more than 5 computer players allowed')
 
     # randomly select a player from the list
     def get_player(self, available_players_list: list):
@@ -34,6 +34,9 @@ class Player:
         :param  dealt_cards
         @return:  dealt cards
         """
-        self.dealt_cards = dealt_cards
+        if dealt_cards.count(self) >= 3 or dealt_cards.count(self) <= 6:
+            self.dealt_cards = dealt_cards
+        else:
+            raise IndexError('the number of cards dealt, must be between 3 and 6')
 
         return self.dealt_cards
