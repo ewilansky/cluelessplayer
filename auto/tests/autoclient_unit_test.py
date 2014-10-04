@@ -1,5 +1,5 @@
 import unittest
-# import unittest.mock as mock
+import itertools
 from auto.automaton import Player
 
 class AutoClientUnitTest(unittest.TestCase):
@@ -54,10 +54,23 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertEqual(ve.exception.args, ('the card Blue is not valid', ))
 
+    def test_where_is_player_on_board(self):
+        # this is a test to drive the creation of the get_location function
+        location = self.player.get_location('Hallway_09')
+
+        location_categories = [self.player.get_rooms, self.player.get_lobbies]
+        all_locations = list(itertools.chain(*location_categories ))
+
+        self.assertIn(location, all_locations)
+
     def test_should_take_turn(self):
         # this will call the move command, which can kick-off a number of possible
         # actions - move into a room, move out of a room, move between rooms. Suggest/accuse, etc...
         pass
+
+        # given my location
+        # move into a room, out of a room to an adjacent lobby or between rooms on the diagonal
+        # optionally make a suggestion or accusation
 
     def test_can_move_out_of_room(self):
         pass
@@ -69,9 +82,6 @@ class AutoClientUnitTest(unittest.TestCase):
         pass
 
     def test_move_to_specific_room(self):
-        pass
-
-    def test_which_room_is_player_in(self):
         pass
 
     def test_whether_player_makes_a_valid_move(self):

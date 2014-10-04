@@ -1,5 +1,4 @@
 import random
-#   from auto.gameentity import Suspect, Weapon, Room
 import itertools
 
 class Player:
@@ -7,6 +6,13 @@ class Player:
     player_count = 0
 
     def __init__(self, available_players_list):
+        """
+        Instantiate a player for the game and provided that the upper-limit of
+        allowed players has not been reached.
+
+        :param available_players_list:
+        :raise IndexError:
+        """
         if self.player_count <= 5:
 
             # select a player
@@ -20,13 +26,13 @@ class Player:
         else:
             raise IndexError('no more than 5 computer players allowed')
 
-    # randomly select a player from the list
     def get_player(self, available_players_list: list):
         """
-        :param available_players_list:
+        Randomly choose a player from a list of available players.
+
+        :param self:
         :return: a randomly selected player
         """
-
         return random.choice(available_players_list)
 
     def receive_cards(self, dealt_cards: list):
@@ -50,25 +56,48 @@ class Player:
 
     @property
     def get_suspects(self):
+        """
+        Get the suspects that are valid for this game.
+
+        :return: valid suspects
+        """
         return ['Mustard', 'Scarlet', 'White', 'Plum', 'Green', 'Peacock']
 
     @property
     def get_rooms(self):
+        """
+        Get the rooms that are valid for this game.
+
+        :return: valid rooms
+        """
         return ['Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen']
 
     @property
     def get_weapons(self):
+        """
+        Get the weapons that are valid for this game.
+
+        :return: valid weapons
+        """
         return ['Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick']
+
+    @property
+    def get_lobbies(self):
+        """
+        Get the lobbies that are valid for this game.
+
+        :return: valid lobbies
+        """
+        return ['Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
+                'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12']
 
     def verify_card(self, card_to_verify):
         """
-        Verify that the cards dealt are valid
+        Verify that the card dealt is valid
 
-        :param dealt_cards:
+        :param card_to_verify
         """
-
         cards = [self.get_suspects, self.get_rooms, self.get_weapons]
-
         allCards = list(itertools.chain(*cards))
 
         if card_to_verify in allCards:
@@ -76,16 +105,5 @@ class Player:
         else:
             return False
 
-        # for item_type in cards:
-
-
-            # for name, member in item_type.__members__.items():
-            #     # if member.name == name and name == card_to_verify:
-            #     if card_to_verify in item_type.__members__.items():
-            #         continue
-            #     else:
-            #         return False
-
-            # var = [name for name, member in item_type.__members__.items() if member.name == name and name == card_to_verify]
-
-            # print('done')
+    def get_location(self, location):
+        return location
