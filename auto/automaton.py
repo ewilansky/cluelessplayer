@@ -1,4 +1,6 @@
 import random
+#   from auto.gameentity import Suspect, Weapon, Room
+import itertools
 
 class Player:
     # only class variable (might not be needed by dealer, but here for convenience)
@@ -34,9 +36,56 @@ class Player:
         :param  dealt_cards
         @return:  dealt cards
         """
-        if dealt_cards.count(self) >= 3 or dealt_cards.count(self) <= 6:
+        if 3 <= len(dealt_cards) <= 6:
             self.dealt_cards = dealt_cards
         else:
             raise IndexError('the number of cards dealt, must be between 3 and 6')
 
+        for card in dealt_cards:
+            verified = self.verify_card(card)
+            if not verified:
+                raise ValueError('the card {0} is not valid'.format(card))
+
         return self.dealt_cards
+
+    @property
+    def get_suspects(self):
+        return ['Mustard', 'Scarlet', 'White', 'Plum', 'Green', 'Peacock']
+
+    @property
+    def get_rooms(self):
+        return ['Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen']
+
+    @property
+    def get_weapons(self):
+        return ['Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick']
+
+    def verify_card(self, card_to_verify):
+        """
+        Verify that the cards dealt are valid
+
+        :param dealt_cards:
+        """
+
+        cards = [self.get_suspects, self.get_rooms, self.get_weapons]
+
+        allCards = list(itertools.chain(*cards))
+
+        if card_to_verify in allCards:
+            return True
+        else:
+            return False
+
+        # for item_type in cards:
+
+
+            # for name, member in item_type.__members__.items():
+            #     # if member.name == name and name == card_to_verify:
+            #     if card_to_verify in item_type.__members__.items():
+            #         continue
+            #     else:
+            #         return False
+
+            # var = [name for name, member in item_type.__members__.items() if member.name == name and name == card_to_verify]
+
+            # print('done')

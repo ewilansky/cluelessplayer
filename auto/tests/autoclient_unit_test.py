@@ -26,17 +26,33 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertTrue(3 <= len(self.cards) <= 6)
 
-    def test_should_state_invalid_number_of_cards_dealt(self):
+    def test_should_throw_exception_for_invalid_number_of_cards_dealt(self):
         dealt_cards = ['Wrench', 'White', 'Study', 'Plum', 'Mustard', 'Knife', 'Scarlet']
 
-        self.cards = self.player.receive_cards(dealt_cards)
+        self.assertRaises(IndexError, self.player.receive_cards, dealt_cards)
 
-        self.assertRaises(IndexError)
+    def test_should_state_invalid_number_of_cards_dealt(self):
+        # see https://docs.python.org/dev/library/unittest.html#unittest.TestCase.assertRaises
+        # for another working sample, see
+        # http://stackoverflow.com/questions/8215653/using-a-context-manager-with-python-assertraises
+        dealt_cards = ['Wrench', 'White', 'Study', 'Plum', 'Mustard', 'Knife', 'Scarlet']
+
+        with self.assertRaises(IndexError) as ie:
+            self.player.receive_cards(dealt_cards)
+
+        self.assertEqual(ie.exception.args, ('the number of cards dealt, must be between 3 and 6', ))
 
     def test_should_state_cards_are_invalid(self):
-        # will have an enumeration of valid cards to work with
+        # will have enumerations of valid cards to work with
         # this will test that the cards dealt are in that enumeration
-        pass
+        dealt_cards = ['Wrench', 'White', 'Blue']
+
+        self.assertRaises(ValueError, self.player.receive_cards, dealt_cards)
+
+        with self.assertRaises(ValueError) as ve:
+            self.player.receive_cards(dealt_cards)
+
+        self.assertEqual(ve.exception.args, ('the card Blue is not valid', ))
 
     def test_should_take_turn(self):
         # this will call the move command, which can kick-off a number of possible
