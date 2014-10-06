@@ -15,16 +15,35 @@ class Player:
         """
         if self.player_count <= 5:
 
-            # select a player
-            self.selected_player = self.get_player(available_players_list)
-
             # add to the player count so server knows # active autonomous player
             self.player_count += 1
 
             # instance variables needed for game play
+            self.selected_player = self.get_player(available_players_list)
             self.dealt_cards = []
+            self.location = self.get_starting_location(self.selected_player)
+
         else:
             raise IndexError('no more than 5 computer players allowed')
+
+    @staticmethod
+    def get_starting_location(selected_player):
+        """
+        Gets the starting position of the selected player.
+
+        :param selected_player:
+        :return: the players starting position
+        """
+        starting_positions = {
+            'Scarlet': 'Hallway_02',
+            'Mustard': 'Hallway_03',
+            'White': 'Hallway_05',
+            'Green': 'Hallway_06',
+            'Peacock': 'Hallway_07',
+            'Plum': 'Hallway_08'
+        }
+
+        return starting_positions[selected_player]
 
     def get_player(self, available_players_list: list):
         """
@@ -105,5 +124,5 @@ class Player:
         else:
             return False
 
-    def get_location(self, location):
-        return location
+    def get_location(self):
+        return self.location
