@@ -62,7 +62,6 @@ class Player:
         Randomly choose a player from a list of available players.
 
         :param self:
-        :param self:
         :return: a randomly selected player
         :rtype : str
         """
@@ -212,14 +211,18 @@ class Player:
                 # take this move if it's available even if it has already been taken. Nothing else to do
                 turn_response['move'] = move
                 return turn_response
-            else:
-                turn_response['move'] = ''
-                return turn_response
+
+        turn_response['move'] = ''
+        return turn_response
 
     def take_turn(self, game_state: dict):
 
+        # move block
         available_moves = self.__filter_moves(game_state)
-
         turn_response = self.__make_move(available_moves)
+
+        # suggest block
+        # initially, all that's known are the cards in my deck and any suggestions made prior to this turn
+
 
         return turn_response

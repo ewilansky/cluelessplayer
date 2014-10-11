@@ -63,11 +63,12 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertEqual(ve.exception.args, ('the card Blue is not valid', ))
 
-    def test_where_is_player_on_board(self):
-        # this is a test to drive the creation of the __get_location function
-        # changes this so location isn't passed in. Game state (all player positions
-        # will be sent at the start of each turn. So __get_location might simply use
-        # game state to determine current location and allowed moves
+    def test_where_player_is_on_board(self):
+
+        """
+        Test that the players current location is correctly returned.
+
+        """
         location = self.player.get_location
 
         location_categories = [self.player._get_rooms, self.player._get_lobbies]
@@ -78,16 +79,19 @@ class AutoClientUnitTest(unittest.TestCase):
     def test_player_moves_to_an_allowed_spot(self):
 
         """
-        Tests validity of next moves - adjacent locations and a room via a secret passageway for some rooms
+        Tests validity of next moves - adjacent locations and a room via a secret passageway for some rooms.
 
         """
         self.assertSetEqual(self.player._next_moves('Hallway_01'), {'Study', 'Hall'})
         self.assertSetEqual(self.player._next_moves('Billiard'), {'Hallway_04', 'Hallway_06', 'Hallway_07', 'Hallway_09'})
         self.assertSetEqual(self.player._next_moves('Kitchen'), {'Hallway_10', 'Hallway_12', 'Study'})
 
-    def test_should_not_include_library_as_valid_move_mustard_there_should_move_white_to_billiard(self):
-        # this will call the move command, which can kick-off a number of possible
-        # actions - move into a room, move out of a room, move between rooms. Suggest/accuse, etc...
+    def test_should_not_include_library_as_valid_move_because_mustard_there_so_should_move_white_to_billiard(self):
+
+        """
+        Tests that the player will move to the Billiard Room because the Mustard is blocking entry to the Library
+
+        """
         self.player.selected_player = 'White'
         self.player.location = 'Hallway_06'
         game_state = {'Mustard': 'Library', 'Scarlet': 'Hallway_01', 'Green': 'Study', 'White': 'Hallway_06'}
@@ -95,23 +99,53 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertDictEqual(move_response, {'move': 'Billiard'})
 
-    def test_can_move_out_of_room(self):
-        pass
+    def test_cannot_move_out_from_current_position_all_moves_are_blocked(self):
+        """
+        Tests that the player can't move anywhere because all positions are blocked
 
-    def test_cannot_move_out_of_room(self):
-        pass
+        """
+        self.player.selected_player = 'Plum'
+        self.player.location = 'Billiard'
+        game_state = {'Mustard': 'Hallway_06', 'White': 'Hallway_04', 'Scarlet': 'Hallway_07',
+                      'Peacock': 'Hallway_09', 'Plum': 'Billiard'}
+
+        move_response = self.player.take_turn(game_state)
+
+        self.assertDictEqual(move_response, {'move': ''})
 
     def test_can_move_to_diagonal_room(self):
-        pass
+        """
+        Tests that the player will move to a diagonal room when all other paths are blocked
 
-    def test_move_to_specific_room(self):
-        pass
+        """
+        self.player.selected_player = 'Green'
+        self.player.location = 'Lounge'
+        game_state = {'White': 'Hallway_02', 'Scarlet': 'Hallway_05', 'Green': 'Lounge'}
 
-    def test_whether_player_makes_a_valid_move(self):
-        pass
+        move_response = self.player.take_turn(game_state)
+        subset_test = {'move': 'Conservatory'}
+
+        self.assertEquals(subset_test, self.__sub_dictionary_from_dictionary(subset_test, move_response))
 
     def test_move_and_suggest(self):
-        pass
+        game_state = {'White': 'Hallway_02', 'Scarlet': 'Hallway_05', 'Green': 'Lounge'}
+
+        move_response = self.player.take_turn(game_state)
+
+        subset_test = {'suggest': ['Mustard', 'Lounge', 'Knife']}
+        self.assertEqual(subset_test, self.__sub_dictionary_from_dictionary(subset_test, move_response))
+
 
     def test_move_and_accuse(self):
         pass
+
+    def __sub_dictionary_from_dictionary(self, subset_dictionary, dictionary):
+        """
+        Helper to replace deprecated assertDictContainsSubset
+
+        :param subset_dictionary: the dictionary subset in which to test
+        :param dictionary: the full dictionary that should contain the subset
+        :return: subset
+        :rtype: dict<str, str>
+        """
+        return dict([(k,dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])
