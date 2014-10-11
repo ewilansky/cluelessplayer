@@ -16,4 +16,4 @@ config = {
     'name': 'cluelessplayer'
 }
 
-setup(**config)
+setup(**config, requires=['networkx'])

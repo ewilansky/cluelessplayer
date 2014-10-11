@@ -7,9 +7,6 @@ class AutoClientUnitTest(unittest.TestCase):
         available_players = ['Peacock', 'Plum', 'Green', 'Mustard']
         self.player = Player(available_players)
 
-    def tearDown(self):
-        pass
-
     def test_player_instantiated(self):
         # test that a player object was returned
         self.assertTrue(self.player)
@@ -19,11 +16,11 @@ class AutoClientUnitTest(unittest.TestCase):
         # no moves have been made so the instantiated player should be in the correct starting position
         starting_position = self.player.get_starting_location(self.player.selected_player)
 
-        if self.player == 'Peacock':
+        if self.player.selected_player == 'Peacock':
             self.assertTrue(starting_position == 'Hallway_07')
-        elif self.player == 'Plum':
+        elif self.player.selected_player == 'Plum':
             self.assertTrue(starting_position == 'Hallway_08')
-        elif self.player == 'Green':
+        elif self.player.selected_player == 'Green':
             self.assertTrue(starting_position == 'Hallway_06')
         else:
             self.assertTrue(starting_position == 'Hallway_03')
@@ -67,33 +64,36 @@ class AutoClientUnitTest(unittest.TestCase):
         self.assertEqual(ve.exception.args, ('the card Blue is not valid', ))
 
     def test_where_is_player_on_board(self):
-        # this is a test to drive the creation of the get_location function
+        # this is a test to drive the creation of the __get_location function
         # changes this so location isn't passed in. Game state (all player positions
-        # will be sent at the start of each turn. So get_location might simply use
+        # will be sent at the start of each turn. So __get_location might simply use
         # game state to determine current location and allowed moves
-        location = self.player.get_location()
+        location = self.player.get_location
 
-        location_categories = [self.player.get_rooms, self.player.get_lobbies]
+        location_categories = [self.player._get_rooms, self.player._get_lobbies]
         all_locations = list(itertools.chain(*location_categories ))
 
         self.assertIn(location, all_locations)
 
     def test_player_moves_to_an_allowed_spot(self):
-        # when asked to move, move to an allowed location
-        location = self.player.get_location()
 
-    def test_should_move_from_hallway_01_to_study_and_store_visit(self):
+        """
+        Tests validity of next moves - adjacent locations and a room via a secret passageway for some rooms
+
+        """
+        self.assertSetEqual(self.player._next_moves('Hallway_01'), {'Study', 'Hall'})
+        self.assertSetEqual(self.player._next_moves('Billiard'), {'Hallway_04', 'Hallway_06', 'Hallway_07', 'Hallway_09'})
+        self.assertSetEqual(self.player._next_moves('Kitchen'), {'Hallway_10', 'Hallway_12', 'Study'})
+
+    def test_should_not_include_library_as_valid_move_mustard_there_should_move_white_to_billiard(self):
         # this will call the move command, which can kick-off a number of possible
         # actions - move into a room, move out of a room, move between rooms. Suggest/accuse, etc...
+        self.player.selected_player = 'White'
+        self.player.location = 'Hallway_06'
+        game_state = {'Mustard': 'Library', 'Scarlet': 'Hallway_01', 'Green': 'Study', 'White': 'Hallway_06'}
+        move_response = self.player.take_turn(game_state)
 
-        current_location = self.player.get_location('Hallway_01')
-        move_success = self.move(current_location)
-        self.assertEqual(self.player.get_location(), 'Study')
-
-
-        # given my location
-        # move into a room, out of a room to an adjacent lobby or between rooms on the diagonal
-        # optionally make a suggestion or accusation
+        self.assertDictEqual(move_response, {'move': 'Billiard'})
 
     def test_can_move_out_of_room(self):
         pass

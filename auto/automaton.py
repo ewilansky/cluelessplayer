@@ -1,8 +1,10 @@
 import random
 import itertools
+from auto.board import Board
 
 class Player:
-    # only class variable (might not be needed by dealer, but here for convenience)
+    __board = Board()
+    # this class variable (might not be needed by dealer, but here for convenience)
     player_count = 0
 
     def __init__(self, available_players_list):
@@ -10,8 +12,16 @@ class Player:
         Instantiate a player for the game and provided that the upper-limit of
         allowed players has not been reached.
 
-        :param available_players_list:
-        :raise IndexError:
+        :param available_players_list [list <string>]
+        :var
+            __board <networkx.Graph> (scope: class)
+            player_count <int> (scope: class)
+            selected_player <string> (scope: instance)
+            dealt_cards [list<string>] (scope: instance)
+            location <string> (scope: instance)
+
+        :raise
+            IndexError if player count > 5
         """
         if self.player_count <= 5:
 
@@ -19,20 +29,22 @@ class Player:
             self.player_count += 1
 
             # instance variables needed for game play
-            self.selected_player = self.get_player(available_players_list)
+            self.selected_player = self.__get_player(available_players_list)
             self.dealt_cards = []
             self.location = self.get_starting_location(self.selected_player)
+            # prior moves will initially contain just the starting position for this player
+            self.prior_moves = [self.location]
 
         else:
             raise IndexError('no more than 5 computer players allowed')
 
-    @staticmethod
-    def get_starting_location(selected_player):
+    def get_starting_location(self, selected_player):
         """
         Gets the starting position of the selected player.
 
-        :param selected_player:
-        :return: the players starting position
+        :param selected_player <string>
+        :return: the selected player's starting hallway position
+        :rtype : str
         """
         starting_positions = {
             'Scarlet': 'Hallway_02',
@@ -45,12 +57,14 @@ class Player:
 
         return starting_positions[selected_player]
 
-    def get_player(self, available_players_list: list):
+    def __get_player(self: list, available_players_list):
         """
         Randomly choose a player from a list of available players.
 
         :param self:
+        :param self:
         :return: a randomly selected player
+        :rtype : str
         """
         return random.choice(available_players_list)
 
@@ -58,8 +72,12 @@ class Player:
         """
         Receive a set of cards from the dealer and store them.
 
-        :param  dealt_cards
-        @return:  dealt cards
+        :param dealt_cards: list
+        :return:  dealt cards
+        :rtype: list<str>
+        :raise:
+            IndexError if # of cards not between 3 and 6
+            ValueError if cards dealt are not in Cards data structure
         """
         if 3 <= len(dealt_cards) <= 6:
             self.dealt_cards = dealt_cards
@@ -67,56 +85,75 @@ class Player:
             raise IndexError('the number of cards dealt, must be between 3 and 6')
 
         for card in dealt_cards:
-            verified = self.verify_card(card)
+            verified = self.__verify_card(card)
             if not verified:
                 raise ValueError('the card {0} is not valid'.format(card))
 
         return self.dealt_cards
 
     @property
-    def get_suspects(self):
+    def _get_suspects(self):
         """
         Get the suspects that are valid for this game.
 
         :return: valid suspects
+        :rtype: list<str>
         """
         return ['Mustard', 'Scarlet', 'White', 'Plum', 'Green', 'Peacock']
 
     @property
-    def get_rooms(self):
+    def _get_rooms(self):
         """
         Get the rooms that are valid for this game.
 
         :return: valid rooms
+        :rtype: list<str>
         """
         return ['Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen']
 
     @property
-    def get_weapons(self):
+    def _get_weapons(self):
         """
         Get the weapons that are valid for this game.
 
         :return: valid weapons
+        :rtype: list<str>
         """
         return ['Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick']
 
     @property
-    def get_lobbies(self):
+    def _get_lobbies(self):
+
         """
         Get the lobbies that are valid for this game.
 
         :return: valid lobbies
+        :rtype: list<str>
         """
         return ['Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
                 'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12']
 
-    def verify_card(self, card_to_verify):
+    @property
+    def get_location(self):
+
+        """
+        Get the location of this player and store it as an instance variable for tracking location.
+
+        :return: current location
+        :rtype: str
+        """
+        return self.location
+
+    def __verify_card(self, card_to_verify):
+
         """
         Verify that the card dealt is valid
 
-        :param card_to_verify
+        :param: card_to_verify <string>
+        :return: true if card is valid. Otherwise, false
+        :rtype: bool
         """
-        cards = [self.get_suspects, self.get_rooms, self.get_weapons]
+        cards = [self._get_suspects, self._get_rooms, self._get_weapons]
         allCards = list(itertools.chain(*cards))
 
         if card_to_verify in allCards:
@@ -124,5 +161,65 @@ class Player:
         else:
             return False
 
-    def get_location(self):
-        return self.location
+    def _next_moves(self, current_location):
+        """
+        Finds all possible locations that can be the next move from the player's current position.
+
+        :param current_location:
+        :return: a list of possible next moves
+        :rtype: list<str>
+        """
+        return self.__board.neighborhood(current_location, 1)
+
+    def __filter_moves(self, game_state):
+
+        """
+        Find current position and next moves. This removes moves that are blocked.
+
+        :param game_state:
+        :return: available, non-blocked moves
+        :rtype: set<str>
+        """
+        current_location = self.get_location
+        moves = self._next_moves(current_location)
+        available_moves = set()
+        # if next moves show a match in game_state dictionary, then eliminate it from next_moves set
+        for move in moves:
+            if move not in game_state.values():
+                available_moves.add(move)
+        return available_moves
+
+    def __make_move(self, available_moves):
+
+        """
+        Make a move
+
+        :param available_moves:
+        :return: a dictionary containing the move command and a location to move or empty string
+        :rtype : dict{'move':<str>}
+
+        """
+        turn_response = {}
+
+        for move in available_moves:
+            if move not in self.prior_moves:
+                # populate the move key with this move (will be sent to caller)
+                turn_response['move'] = move
+                # add the move to prior moves list
+                self.prior_moves.append(move)
+                return turn_response
+            elif move in self.prior_moves:
+                # take this move if it's available even if it has already been taken. Nothing else to do
+                turn_response['move'] = move
+                return turn_response
+            else:
+                turn_response['move'] = ''
+                return turn_response
+
+    def take_turn(self, game_state: dict):
+
+        available_moves = self.__filter_moves(game_state)
+
+        turn_response = self.__make_move(available_moves)
+
+        return turn_response
