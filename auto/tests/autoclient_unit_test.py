@@ -1,19 +1,40 @@
 import unittest
 import itertools
-from auto.automaton import Player
+from auto.automaton import Player, Pad
+
 
 class AutoClientUnitTest(unittest.TestCase):
+    """
+    The automaton Player unit test class
+    """
+
     def setUp(self):
+        """
+        unittest class setup
+
+        :var available players list for most tests in this class
+        :var an instantiated player object
+        """
+
         available_players = ['Peacock', 'Plum', 'Green', 'Mustard']
         self.player = Player(available_players)
+        # create a pad for 4 players
+        self.pad = Pad(4)
 
     def test_player_instantiated(self):
-        # test that a player object was returned
+        """
+        Test that a player object was returned.
+
+        """
         self.assertTrue(self.player)
         self.assertTrue(self.player.selected_player == 'Peacock' or 'Plum' or 'Green', 'Mustard')
 
     def test_selected_player_in_correct_starting_position(self):
-        # no moves have been made so the instantiated player should be in the correct starting position
+        """
+        Since no moves have been made, test that the instantiated player should be in the correct starting position.
+
+        """
+
         starting_position = self.player.get_starting_location(self.player.selected_player)
 
         if self.player.selected_player == 'Peacock':
@@ -26,6 +47,11 @@ class AutoClientUnitTest(unittest.TestCase):
             self.assertTrue(starting_position == 'Hallway_03')
 
     def test_should_store_a_valid_set_of_cards(self):
+        """
+        Tests that the number of cards dealt are between 3 and y
+
+        """
+
         # the number of cards will vary based on the number of players
         # 21 cards (3 hidden), 18 available. # of players 3 to 6
         # deal min 3, max 6 cards
@@ -36,11 +62,20 @@ class AutoClientUnitTest(unittest.TestCase):
         self.assertTrue(3 <= len(self.cards) <= 6)
 
     def test_should_throw_exception_for_invalid_number_of_cards_dealt(self):
+        """
+        Tests that an exception is thrown if the number of cards dealt are not between 3 and 6.
+        """
+
         dealt_cards = ['Wrench', 'White', 'Study', 'Plum', 'Mustard', 'Knife', 'Scarlet']
 
         self.assertRaises(IndexError, self.player.receive_cards, dealt_cards)
 
     def test_should_state_invalid_number_of_cards_dealt(self):
+        """
+        Tests that if too many cards are dealt, the Player object returns a too many cards message.
+
+        """
+
         # see https://docs.python.org/dev/library/unittest.html#unittest.TestCase.assertRaises
         # for another working sample, see
         # http://stackoverflow.com/questions/8215653/using-a-context-manager-with-python-assertraises
@@ -52,6 +87,10 @@ class AutoClientUnitTest(unittest.TestCase):
         self.assertEqual(ie.exception.args, ('the number of cards dealt, must be between 3 and 6', ))
 
     def test_should_state_cards_are_invalid(self):
+        """
+        Tests that an error occurs if the cards received do not belong to the data structure of cards.
+
+        """
         # will have enumerations of valid cards to work with
         # this will test that the cards dealt are in that enumeration
         dealt_cards = ['Wrench', 'White', 'Blue']
@@ -72,7 +111,7 @@ class AutoClientUnitTest(unittest.TestCase):
         location = self.player.get_location
 
         location_categories = [self.player._get_rooms, self.player._get_lobbies]
-        all_locations = list(itertools.chain(*location_categories ))
+        all_locations = list(itertools.chain(*location_categories))
 
         self.assertIn(location, all_locations)
 
@@ -83,7 +122,8 @@ class AutoClientUnitTest(unittest.TestCase):
 
         """
         self.assertSetEqual(self.player._next_moves('Hallway_01'), {'Study', 'Hall'})
-        self.assertSetEqual(self.player._next_moves('Billiard'), {'Hallway_04', 'Hallway_06', 'Hallway_07', 'Hallway_09'})
+        self.assertSetEqual(self.player._next_moves('Billiard'),
+                            {'Hallway_04', 'Hallway_06', 'Hallway_07', 'Hallway_09'})
         self.assertSetEqual(self.player._next_moves('Kitchen'), {'Hallway_10', 'Hallway_12', 'Study'})
 
     def test_should_not_include_library_as_valid_move_because_mustard_there_so_should_move_white_to_billiard(self):
@@ -125,21 +165,57 @@ class AutoClientUnitTest(unittest.TestCase):
         move_response = self.player.take_turn(game_state)
         subset_test = {'move': 'Conservatory'}
 
-        self.assertEquals(subset_test, self.__sub_dictionary_from_dictionary(subset_test, move_response))
+        self.assertEquals(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
 
     def test_move_and_suggest(self):
+        """
+        Tests that the player can move into the room and make a suggestion.
+
+        """
+
         game_state = {'White': 'Hallway_02', 'Scarlet': 'Hallway_05', 'Green': 'Lounge'}
 
         move_response = self.player.take_turn(game_state)
 
         subset_test = {'suggest': ['Mustard', 'Lounge', 'Knife']}
-        self.assertEqual(subset_test, self.__sub_dictionary_from_dictionary(subset_test, move_response))
+        self.assertEqual(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
 
 
+    # tests for building the player pad data structure
+    def test_creating_pad_data_structure_for_three_players(self):
+
+        pad = Pad(3)
+
+        expected_list_of_keys = ['p01', 'p02', 'p03']
+        self.assertEqual(sorted(pad.players_list), expected_list_of_keys)
+
+    def test_one_player1_tells_player2_has_card_player2_marks_pad_column1(self):
+
+        suggested_cards = {'suggest': ['Plum', 'Ballroom', 'Wrench']}
+        respond_card = 'Ballroom'
+
+        p01 = self.pad.get_player_table('p01')
+
+        # locate player 1's column 1 for the specified card and put an x in it
+        p01['c1'][respond_card] = 'x'
+
+        self.assertEqual(p01['c1'][respond_card], 'x', 'the value in the cell isn\'t x')
+
+
+    # end tests of the pad data structure
+
+    # TODO
     def test_move_and_accuse(self):
+        """
+        Tests that the player can move into a room and make an accusation.
+
+        """
+
         pass
 
-    def __sub_dictionary_from_dictionary(self, subset_dictionary, dictionary):
+
+    # helper classes
+    def __subdictionary_from_dictionary(self, subset_dictionary, dictionary):
         """
         Helper to replace deprecated assertDictContainsSubset
 
@@ -148,4 +224,4 @@ class AutoClientUnitTest(unittest.TestCase):
         :return: subset
         :rtype: dict<str, str>
         """
-        return dict([(k,dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])
+        return dict([(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])

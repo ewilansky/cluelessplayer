@@ -2,6 +2,10 @@ import socket
 import json
 import automaton
 
+"""
+An integration test module for integration testing server communications.
+
+"""
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

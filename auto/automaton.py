@@ -1,8 +1,22 @@
 import random
 import itertools
 from auto.board import Board
+from auto.pad import Pad
+
+"""
+    :module:: automaton
+    :platform: Unix, Windows
+    :synopsis: A useful module indeed.
+
+    :moduleauthor:: Ethan Wilansky, Shambhavi Sanskrit and Henoke Shiferaw
+
+"""
 
 class Player:
+    """
+    The player class to be instantiated for each requested Clue-Less computer/AI player
+
+    """
     __board = Board()
     # this class variable (might not be needed by dealer, but here for convenience)
     player_count = 0
@@ -57,7 +71,7 @@ class Player:
 
         return starting_positions[selected_player]
 
-    def __get_player(self: list, available_players_list):
+    def __get_player(self, available_players_list):
         """
         Randomly choose a player from a list of available players.
 
@@ -218,11 +232,49 @@ class Player:
     def take_turn(self, game_state: dict):
 
         # move block
+        """
+        Take a turn given the game state.
+
+        :param game_state: dictionary containing the state of the game position, suggestion and accusation keys.
+          Key values are dictionaries as described in the interface specification.
+        :return: dictionary containing a moveto, suggest and accuse key. Suggest and accuse values are lists of string
+        """
         available_moves = self.__filter_moves(game_state)
         turn_response = self.__make_move(available_moves)
-
+        # still need to make suggest and accuse functions that get called here
         # suggest block
         # initially, all that's known are the cards in my deck and any suggestions made prior to this turn
-
+        # I will be creating a table with a column for each player and multiple cells/player (probably 10 or 12)
+        # in the player's column. Each row will be a card.
 
         return turn_response
+
+    def notify_card_revealed(self, response: dict):
+
+        # from the response, figure out what cards where asked ad whether the other player said they had a
+        # a card. If so, mark the internal players table and calculate whether you can figure out
+        # which card was revealed.
+
+        """
+        Reveal that a card was revealed and optionally, depending on who asked, the card that was revealed.
+
+        :param response: dictionary containing a response with three keys match, card and player_name. Match is a
+          Boolean, player_name is a string and card is a string. Card will contain a value only if the server is
+          sending a response to the Autonomous player who asked if another player had a card.
+        """
+
+        print(response["match"])
+        pass
+
+
+    def question(self, question_asked: dict):
+
+        """
+        Ask this computer player a question about whether they have one of three cards
+        :param question_asked: dictionary containing two keys: player_name <string> and cards<list>. Cards should
+          contain three string values.
+        :return:
+        """
+        answer = "I don't have that card"
+
+        return answer

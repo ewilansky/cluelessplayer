@@ -2,11 +2,16 @@ import networkx as nx
 
 
 class Board:
+    """
+    The Clue-Less board graph
+
+    """
+
     def __init__(self):
         """
         Creates the board for the game of Clue-Less
 
-        var board <networkx.Graph> class variable
+        :var board <networkx.Graph> class variable
 
         """
         self.board = nx.Graph()
