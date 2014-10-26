@@ -6,11 +6,12 @@ from auto.pad import Pad
 """
     :module:: automaton
     :platform: Unix, Windows
-    :synopsis: A useful module indeed.
+    :synopsis: The AI/Computer Player object for the game of Clue-Less.
 
-    :moduleauthor:: Ethan Wilansky, Shambhavi Sanskrit and Henoke Shiferaw
+    :moduleauthor: Ethan Wilansky, Shambhavi Sanskrit and Henoke Shiferaw
 
 """
+
 
 class Player:
     """
@@ -21,22 +22,29 @@ class Player:
     # this class variable (might not be needed by dealer, but here for convenience)
     player_count = 0
 
-    def __init__(self, available_players_list):
+    def __init__(self, available_players_list, total_players:int):
         """
         Instantiate a player for the game and provided that the upper-limit of
         allowed players has not been reached.
 
         :param available_players_list [list <string>]
+        :param total_players: int
+
         :var
-            __board <networkx.Graph> (scope: class)
-            player_count <int> (scope: class)
-            selected_player <string> (scope: instance)
-            dealt_cards [list<string>] (scope: instance)
-            location <string> (scope: instance)
+            class vars:
+            __board <networkx.Graph>
+            player_count <int>
+            instance vars:
+            selected_player <string>
+            dealt_cards [list<string>]
+            location <string>
+            prior_moves <string>
+            pad [dictionary<auto.PlayerMatrix>]
 
         :raise
             IndexError if player count > 5
         """
+
         if self.player_count <= 5:
 
             # add to the player count so server knows # active autonomous player
@@ -48,6 +56,8 @@ class Player:
             self.location = self.get_starting_location(self.selected_player)
             # prior moves will initially contain just the starting position for this player
             self.prior_moves = [self.location]
+            # create a player pad for this player with the total number of players specified
+            self.pad = Pad(total_players)
 
         else:
             raise IndexError('no more than 5 computer players allowed')
@@ -103,6 +113,13 @@ class Player:
                 raise ValueError('the card {0} is not valid'.format(card))
 
         return self.dealt_cards
+
+    def create_pad(self, number_players_in_game):
+        """
+        Create a note pad based on the number of players in the game
+        :param number_players_in_game:
+        """
+        return Pad(number_players_in_game);
 
     @property
     def _get_suspects(self):
@@ -271,6 +288,7 @@ class Player:
 
         """
         Ask this computer player a question about whether they have one of three cards
+
         :param question_asked: dictionary containing two keys: player_name <string> and cards<list>. Cards should
           contain three string values.
         :return:
@@ -278,3 +296,45 @@ class Player:
         answer = "I don't have that card"
 
         return answer
+
+    def mark_pad(self, suggestion):
+
+        # three possible suggestions are: True ("I have one of the cards suggested") if this player is not the one
+        # making the suggestion. False, ("I don't have one of the cards suggested") whether or not this player is
+        # the one making the suggestion. The actual card if this player is the one making the suggestion and there is
+        # a match to share.
+
+        """
+        Given the suggestion, mark this player's pad.
+        :param suggestion:
+        """
+
+        answer = suggestion['responded']
+        responding_player = suggestion['player']
+        # for the current player, get the sub-table for the responding player
+        responding_player_tbl = self.pad.get_player_table(responding_player)
+
+        if answer is True:
+            card01 = suggestion['suggested'][0].lower()
+            card02 = suggestion['suggested'][1].lower()
+            card03 = suggestion['suggested'][2].lower()
+
+            # get the tracking cell lists
+            cell01 = responding_player_tbl['c2'][card01]
+            cell02 = responding_player_tbl['c2'][card02]
+            cell03 = responding_player_tbl['c2'][card03]
+
+            # check if any of the cards have been asked of this player before. If so, add the greatest increment
+            # to each of the cells. This is done here by getting the length of the union of the cells and adding 1
+            new_entry = len(cell01.union(cell02.union(cell03))) + 1
+            cell01.add(new_entry)
+            cell02.add(new_entry)
+            cell03.add(new_entry)
+
+        elif answer is False:
+            pass
+        else:
+            card_provided = answer.lower()
+
+            # locate player 1's column 1 for the specified card and put an x in it
+            responding_player_tbl['c1'][answer] = 'x'

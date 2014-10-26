@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -22,15 +23,11 @@ class PlayerMatrix:
 
         cards = suspects.union(rooms.union(weapons))
 
-        # for n in range(1 in number_of_players):
+
         player = {'c1': pd.Series(index=cards),
-                  'c2': pd.Series(index=cards),
-                  'c3': pd.Series(index=cards),
-                  'c4': pd.Series(index=cards),
-                  'c5': pd.Series(index=cards),
-                  'c6': pd.Series(index=cards),
-                  'c7': pd.Series(index=cards),
-                  'c8': pd.Series(index=cards)}
+                  'c2': pd.Series([set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(),
+                                   set(), set(), set(), set(), set(), set(), set(), set(), set()],
+                                  index=cards)}
 
         # data frame is a table for this user
         self.table = pd.DataFrame(player)
