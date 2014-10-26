@@ -22,11 +22,12 @@ class Player:
     # this class variable (might not be needed by dealer, but here for convenience)
     player_count = 0
 
-    def __init__(self, available_players_list, total_players:int):
+    def __init__(self, player_id, available_players_list, total_players: int):
         """
         Instantiate a player for the game and provided that the upper-limit of
         allowed players has not been reached.
 
+        :param player_id: the id assigned to this player by the caller (p01 - p06)
         :param available_players_list [list <string>]
         :param total_players: int
 
@@ -51,18 +52,20 @@ class Player:
             self.player_count += 1
 
             # instance variables needed for game play
-            self.selected_player = self.__get_player(available_players_list)
+            self.selected_player = self.__get_player__(available_players_list)
             self.dealt_cards = []
             self.location = self.get_starting_location(self.selected_player)
             # prior moves will initially contain just the starting position for this player
             self.prior_moves = [self.location]
             # create a player pad for this player with the total number of players specified
             self.pad = Pad(total_players)
+            self.player_id = player_id
 
         else:
             raise IndexError('no more than 5 computer players allowed')
 
-    def get_starting_location(self, selected_player):
+    @staticmethod
+    def get_starting_location(selected_player):
         """
         Gets the starting position of the selected player.
 
@@ -81,7 +84,8 @@ class Player:
 
         return starting_positions[selected_player]
 
-    def __get_player(self, available_players_list):
+    @staticmethod
+    def __get_player__(available_players_list):
         """
         Randomly choose a player from a list of available players.
 
@@ -108,11 +112,11 @@ class Player:
             raise IndexError('the number of cards dealt, must be between 3 and 6')
 
         for card in dealt_cards:
-            verified = self.__verify_card(card)
+            verified = self._verify_card(card)
             if not verified:
                 raise ValueError('the card {0} is not valid'.format(card))
 
-        return self.dealt_cards
+        self._mark_my_cards_on_pad(dealt_cards)
 
     def create_pad(self, number_players_in_game):
         """
@@ -174,7 +178,7 @@ class Player:
         """
         return self.location
 
-    def __verify_card(self, card_to_verify):
+    def _verify_card(self, card_to_verify):
 
         """
         Verify that the card dealt is valid
@@ -201,7 +205,7 @@ class Player:
         """
         return self.__board.neighborhood(current_location, 1)
 
-    def __filter_moves(self, game_state):
+    def _filter_moves(self, game_state):
 
         """
         Find current position and next moves. This removes moves that are blocked.
@@ -219,7 +223,7 @@ class Player:
                 available_moves.add(move)
         return available_moves
 
-    def __make_move(self, available_moves):
+    def _make_move(self, available_moves):
 
         """
         Make a move
@@ -256,8 +260,8 @@ class Player:
           Key values are dictionaries as described in the interface specification.
         :return: dictionary containing a moveto, suggest and accuse key. Suggest and accuse values are lists of string
         """
-        available_moves = self.__filter_moves(game_state)
-        turn_response = self.__make_move(available_moves)
+        available_moves = self._filter_moves(game_state)
+        turn_response = self._make_move(available_moves)
         # still need to make suggest and accuse functions that get called here
         # suggest block
         # initially, all that's known are the cards in my deck and any suggestions made prior to this turn
@@ -265,24 +269,6 @@ class Player:
         # in the player's column. Each row will be a card.
 
         return turn_response
-
-    def notify_card_revealed(self, response: dict):
-
-        # from the response, figure out what cards where asked ad whether the other player said they had a
-        # a card. If so, mark the internal players table and calculate whether you can figure out
-        # which card was revealed.
-
-        """
-        Reveal that a card was revealed and optionally, depending on who asked, the card that was revealed.
-
-        :param response: dictionary containing a response with three keys match, card and player_name. Match is a
-          Boolean, player_name is a string and card is a string. Card will contain a value only if the server is
-          sending a response to the Autonomous player who asked if another player had a card.
-        """
-
-        print(response["match"])
-        pass
-
 
     def question(self, question_asked: dict):
 
@@ -296,6 +282,20 @@ class Player:
         answer = "I don't have that card"
 
         return answer
+
+    def _mark_my_cards_on_pad(self, dealt_cards: list):
+
+        """
+        Mark the cards this player was dealt.
+
+        :type dealt_cards: list
+        :param dealt_cards: 
+        """
+        player_tbl = self.pad.get_player_table(self.player_id)
+
+        for card in dealt_cards:
+            # get this player's sub-table and mark that they have this set of cards (from 3 to 6)
+            player_tbl['c1'][card] = 1
 
     def mark_pad(self, suggestion):
 
@@ -336,5 +336,14 @@ class Player:
         else:
             card_provided = answer.lower()
 
-            # locate player 1's column 1 for the specified card and put an x in it
-            responding_player_tbl['c1'][answer] = 'x'
+            # locate player 1's column 1 for the specified card and put a 1 in it
+            responding_player_tbl['c1'][answer] = 1
+
+            self._clear_c2_cells(answer)
+
+    def _clear_c2_cells(self, answer):
+        # clear the corresponding col2 cell for the answered card
+        # and do this for all of the players including this player
+        for player in self.pad.players_list:
+            tbl = self.pad.get_player_table(player)
+            tbl['c2'][answer].clear()

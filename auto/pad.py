@@ -12,9 +12,10 @@ class Pad:
 
         # create a dictionary containing all of the players as columns
         # with a set of sub-columns to track cards that are played
-        self.players_pad = {}
+        self.player_pad = {}
+
         for x in range(1, number_of_players + 1):
-            self.players_pad['p0' + str(x)] = pm.PlayerMatrix()
+            self.player_pad['p0' + str(x)] = pm.PlayerMatrix()
 
     @property
     def players_list(self):
@@ -24,15 +25,15 @@ class Pad:
         :rtype : list of dictionary keys
         :return: the list of active players in this player's pad
         """
-        return self.players_pad.keys()
+        return self.player_pad.keys()
 
-    def get_player_table(self, player_id):
+    def get_player_table(self, player_id: str):
         """
         :param player_id: id of player table to retrieve
         :rtype : Pandas.DataFrame
         :return : the entire table (in the pad) for this player to track the game
         """
-        return self.players_pad[player_id].table
+        return self.player_pad[player_id].table
 
 
 

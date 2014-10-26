@@ -1,5 +1,8 @@
 import unittest
 import itertools
+import logging
+import sys
+
 from auto.automaton import Player
 
 
@@ -15,8 +18,16 @@ class AutoClientUnitTest(unittest.TestCase):
         :var available players list for most tests in this class
         :var an instantiated player object
         """
+        logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
         available_players = ['Peacock', 'Plum', 'Green', 'Mustard']
-        self.player = Player(available_players, 4)
+
+        # create a computer player and specify the total number of players in this game
+        self.player = Player('p04', available_players, 4)
+
+        # receive cards from dealer
+        self.dealt_cards = ['Wrench', 'White', 'Study']
+        self.player.receive_cards(self.dealt_cards)
 
     def test_player_instantiated(self):
         """
@@ -40,7 +51,7 @@ class AutoClientUnitTest(unittest.TestCase):
         else:
             self.assertTrue(starting_position == 'Hallway_03')
 
-    def test_should_store_a_valid_set_of_cards(self):
+    def test_that_valid_set_of_dealt_cards_in_this_players_subtable_in_pad(self):
         """
         Tests that the number of cards dealt are between 3 and y
         """
@@ -48,10 +59,15 @@ class AutoClientUnitTest(unittest.TestCase):
         # 21 cards (3 hidden), 18 available. # of players 3 to 6
         # deal min 3, max 6 cards
 
-        dealt_cards = ['Wrench', 'White', 'Study']
-        self.cards = self.player.receive_cards(dealt_cards)
+        # check that this player's table has been marked properly
+        # with the cards dealt
+        tbl = self.player.pad.get_player_table(self.player.player_id)
 
-        self.assertTrue(3 <= len(self.cards) <= 6)
+        for card in self.dealt_cards:
+            self.assertEqual(tbl['c1'][card], 1, '1 isn\'t in cell01 ({0})'.format(card))
+
+        logging.debug('p04 table:\n%s', tbl['c1'])
+
 
     def test_should_throw_exception_for_invalid_number_of_cards_dealt(self):
         """
@@ -177,7 +193,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertEqual(p01['c1'][respond_card], 'x', 'the value in the cell isn\'t x')
 
-    def test_x_in_cell01_should_clear_cell02_for_all_other_players(self):
+    def test_1_in_cell01_should_clear_cell02_for_all_other_players(self):
         # scenario: following an answer to a suggestion, this player has confirmed that answering
         # player has one of the suggested cards. Therefore, this player must check cell02 of the corresponding card
         # for all other players and clear those cells
@@ -193,13 +209,14 @@ class AutoClientUnitTest(unittest.TestCase):
         suggestion = {'suggested': ['White', 'Conservatory', 'Candlestick'], 'player': 'p02', 'responded': True}
         self.player.mark_pad(suggestion)
 
-        self.player.pad.get_player_table('p02')
-        self.player.pad.get_player_table('p03')
+        logging.debug('p02 table:\n%s', self.player.pad.get_player_table('p02'))
+        logging.debug('p03 table:\n%s', self.player.pad.get_player_table('p03'))
+
+        # TODO: you have written the clear function. Now you need to finish this test to verify that the C2 cells are
+        # cleared for the answered cell.
 
 
-
-
-    def test_x_tells_y_that_x_has_a_suggested_card_other_computer_players_mark_their_pad(self):
+    def test_x_tells_y_that_x_has_a_suggested_card_other_computer_players_mark_their_pads(self):
 
         # scenario: When a suggestion is made, all other Computer players should mark their pads if
         # one player tells another player that he/she/it has a card. The other computer players won't
@@ -221,11 +238,11 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertTrue(1 in p01['c2'][first_card] and 1 in p01['c2'][second_card] and 1 in p01['c2'][third_card])
 
-    def test_already_a_one_in_col2_for_one_of_the_card_suggested_so_two_in_next_col(self):
+    def test_already_a_one_in_col2_for_one_of_the_cards_suggested_so_append_two_to_all_three_card_cells(self):
         # scenario: a suggestion was made between two other players (not this player). One of the suggested
         # cards has already been marked on this player's pad in column 2. Meaning that this player has heard
-        # that the player answering has one of the cards being asked. Therefore, mark the next column over
-        # for the answering player.
+        # that the player answering has one of the cards being asked. Therefore, enter a 2 in the list
+        # contained in each card's cell in col2 for the answering player.
 
         """
         Tests that the column 2 (c3) gets a 2 for the cards suggested between two other players

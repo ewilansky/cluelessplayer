@@ -23,8 +23,7 @@ class PlayerMatrix:
 
         cards = suspects.union(rooms.union(weapons))
 
-
-        player = {'c1': pd.Series(index=cards),
+        player = {'c1': pd.Series(int, index=cards),
                   'c2': pd.Series([set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(),
                                    set(), set(), set(), set(), set(), set(), set(), set(), set()],
                                   index=cards)}
