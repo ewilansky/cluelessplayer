@@ -315,9 +315,9 @@ class Player:
         responding_player_tbl = self.pad.get_player_table(responding_player)
 
         if answer is True:
-            card01 = suggestion['suggested'][0].lower()
-            card02 = suggestion['suggested'][1].lower()
-            card03 = suggestion['suggested'][2].lower()
+            card01 = suggestion['suggested'][0]
+            card02 = suggestion['suggested'][1]
+            card03 = suggestion['suggested'][2]
 
             # get the tracking cell lists
             cell01 = responding_player_tbl['c2'][card01]
@@ -334,16 +334,16 @@ class Player:
         elif answer is False:
             pass
         else:
-            card_provided = answer.lower()
+            card_provided = answer
 
             # locate player 1's column 1 for the specified card and put a 1 in it
             responding_player_tbl['c1'][answer] = 1
 
-            self._clear_c2_cells(answer)
+            self._clear_c2_cells(card_provided)
 
-    def _clear_c2_cells(self, answer):
+    def _clear_c2_cells(self, card_provided):
         # clear the corresponding col2 cell for the answered card
         # and do this for all of the players including this player
         for player in self.pad.players_list:
             tbl = self.pad.get_player_table(player)
-            tbl['c2'][answer].clear()
+            tbl['c2'][card_provided].clear()

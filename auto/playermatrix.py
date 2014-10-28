@@ -1,6 +1,4 @@
-import numpy as np
 import pandas as pd
-
 
 class PlayerMatrix:
     def __init__(self):
@@ -10,15 +8,15 @@ class PlayerMatrix:
         :rtype : Pandas.DataFrame
         """
         suspects = {
-            'scarlet', 'plum', 'mustard', 'green', 'white', 'peacock'
+            'Scarlet', 'Plum', 'Mustard', 'Green', 'White', 'Peacock'
         }
 
         rooms = {
-            'study', 'hall', 'lounge', 'library', 'billiard', 'dining', 'conservatory', 'ballroom', 'kitchen'
+            'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'
         }
 
         weapons = {
-            'knife', 'wrench', 'revolver', 'pipe', 'rope', 'candlestick'
+            'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
         }
 
         cards = suspects.union(rooms.union(weapons))

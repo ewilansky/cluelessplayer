@@ -2,6 +2,7 @@ import unittest
 import itertools
 import logging
 import sys
+import numpy as np
 
 from auto.automaton import Player
 
@@ -26,7 +27,7 @@ class AutoClientUnitTest(unittest.TestCase):
         self.player = Player('p04', available_players, 4)
 
         # receive cards from dealer
-        self.dealt_cards = ['Wrench', 'White', 'Study']
+        self.dealt_cards = ['Wrench', 'Green', 'Study']
         self.player.receive_cards(self.dealt_cards)
 
     def test_player_instantiated(self):
@@ -195,12 +196,9 @@ class AutoClientUnitTest(unittest.TestCase):
 
     def test_1_in_cell01_should_clear_cell02_for_all_other_players(self):
         # scenario: following an answer to a suggestion, this player has confirmed that answering
-        # player has one of the suggested cards. Therefore, this player must check cell02 of the corresponding card
-        # for all other players and clear those cells
+        # player has one of the suggested cards. Therefore, this player must clear all cell02 values for the
+        # corresponding card for all players, including this player
 
-        # pre-conditions, cell01 for a card (card=White) has just been marked (for p01) on this player's pad
-        suggestion = {'suggested': ['White', 'Billiard', 'Rope'], 'player': 'p01', 'responded': 'White'}
-        self.player.mark_pad(suggestion)
         # pre-condition, some other players show cell02 for a card (card=White) with values
         suggestion = {'suggested': ['White', 'Kitchen', 'Revolver'], 'player': 'p02', 'responded': True}
         self.player.mark_pad(suggestion)
@@ -209,12 +207,36 @@ class AutoClientUnitTest(unittest.TestCase):
         suggestion = {'suggested': ['White', 'Conservatory', 'Candlestick'], 'player': 'p02', 'responded': True}
         self.player.mark_pad(suggestion)
 
-        logging.debug('p02 table:\n%s', self.player.pad.get_player_table('p02'))
-        logging.debug('p03 table:\n%s', self.player.pad.get_player_table('p03'))
+        # get the player sub-tables for testing before and after the action condition
+        p01_tbl = self.player.pad.get_player_table('p01')
+        p02_tbl = self.player.pad.get_player_table('p02')
+        p03_tbl = self.player.pad.get_player_table('p03')
+        p04_tbl = self.player.pad.get_player_table('p04')
 
-        # TODO: you have written the clear function. Now you need to finish this test to verify that the C2 cells are
-        # cleared for the answered cell.
+        # TODO fix-up asserting values prior to the action condition
+        # logging.debug('p02 c2:\n%s', p02_tbl.c2.White)
+        # verify that the player who has suspect White has a 1 marked in the White cell
+        self.assertEqual(self.player.pad.get_player_table('p01').c1.White, int)
+        # verify that the other players do not have suspect White marked in the White cell
+        # self.assertEqual(self.player.pad.get_player_table('p02').c1.White, )
+        # self.assertEqual(self.player.pad.get_player_table('p03').c1.White, int)
+        # self.assertEqual(self.player.pad.get_player_table('p04').c1.White, int)
 
+
+        # action-condition, cell01 for a card (card=White) has just been confirmed and marked (for p01)
+        # on this player's pad
+        suggestion = {'suggested': ['White', 'Billiard', 'Rope'], 'player': 'p01', 'responded': 'White'}
+        self.player.mark_pad(suggestion)
+
+        # assert values after the action condition
+
+        # verify that the player who has suspect White has a 1 marked in the White cell
+        self.assertEqual(p01_tbl.c1.White, 1)
+        # verify that the other players do not have suspect White marked in the White cell
+        self.assertFalse(p02_tbl.c1.White == 1 and p03_tbl.c1.White == 1 and p04_tbl.c1.White == 1)
+
+        # verify that c2 is clear for all of the players
+        self.assertFalse(1 in p01_tbl.c2.White.union(p02_tbl.c2.White.union(p03_tbl.c2.White.union(p04_tbl.c2.White))))
 
     def test_x_tells_y_that_x_has_a_suggested_card_other_computer_players_mark_their_pads(self):
 
