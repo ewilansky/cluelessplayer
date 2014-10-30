@@ -21,10 +21,10 @@ class AutoClientUnitTest(unittest.TestCase):
         """
         logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-        available_players = ['Peacock', 'Plum', 'Green', 'Mustard']
+        available_suspects = ['Peacock', 'Plum', 'Green', 'Mustard']
 
         # create a computer player and specify the total number of players in this game
-        self.player = Player('p04', available_players, 4)
+        self.player = Player('p04', available_suspects, 4)
 
         # receive cards from dealer
         self.dealt_cards = ['Wrench', 'Green', 'Study']
@@ -35,19 +35,19 @@ class AutoClientUnitTest(unittest.TestCase):
         Test that a player object was returned.
         """
         self.assertTrue(self.player)
-        self.assertTrue(self.player.selected_player == 'Peacock' or 'Plum' or 'Green', 'Mustard')
+        self.assertTrue(self.player.selected_suspect == 'Peacock' or 'Plum' or 'Green', 'Mustard')
 
     def test_selected_player_in_correct_starting_position(self):
         """
         Since no moves have been made, test that the instantiated player should be in the correct starting position.
         """
-        starting_position = self.player.get_starting_location(self.player.selected_player)
+        starting_position = self.player.get_starting_location(self.player.selected_suspect)
 
-        if self.player.selected_player == 'Peacock':
+        if self.player.selected_suspect == 'Peacock':
             self.assertTrue(starting_position == 'Hallway_07')
-        elif self.player.selected_player == 'Plum':
+        elif self.player.selected_suspect == 'Plum':
             self.assertTrue(starting_position == 'Hallway_08')
-        elif self.player.selected_player == 'Green':
+        elif self.player.selected_suspect == 'Green':
             self.assertTrue(starting_position == 'Hallway_06')
         else:
             self.assertTrue(starting_position == 'Hallway_03')
@@ -129,26 +129,26 @@ class AutoClientUnitTest(unittest.TestCase):
                             {'Hallway_04', 'Hallway_06', 'Hallway_07', 'Hallway_09'})
         self.assertSetEqual(self.player._next_moves('Kitchen'), {'Hallway_10', 'Hallway_12', 'Study'})
 
-    def test_should_not_include_library_as_valid_move_because_mustard_there_so_should_move_white_to_billiard(self):
+    def test_should_not_include_library_as_valid_move_because_p01_there_so_should_move_p04_to_billiard(self):
 
         """
-        Tests that the player will move to the Billiard Room because the Mustard is blocking entry to the Library
+        Tests that this player (p04) will move to the Billiard Room because the p01 is blocking entry to the Library
         """
-        self.player.selected_player = 'White'
+
         self.player.location = 'Hallway_06'
-        game_state = {'Mustard': 'Library', 'Scarlet': 'Hallway_01', 'Green': 'Study', 'White': 'Hallway_06'}
+        game_state = {'Positions': {'p01': 'Library', 'p02': 'Hallway_01', 'p03': 'Study', 'p04': 'Hallway_06'}}
         move_response = self.player.take_turn(game_state)
 
         self.assertDictEqual(move_response, {'move': 'Billiard'})
 
     def test_cannot_move_out_from_current_position_all_moves_are_blocked(self):
         """
-        Tests that the player can't move anywhere because all positions are blocked
+        Tests that the player (p04) can't move anywhere because all positions are blocked
         """
-        self.player.selected_player = 'Plum'
+
         self.player.location = 'Billiard'
-        game_state = {'Mustard': 'Hallway_06', 'White': 'Hallway_04', 'Scarlet': 'Hallway_07',
-                      'Peacock': 'Hallway_09', 'Plum': 'Billiard'}
+        game_state = {'Positions': {'p01': 'Hallway_06', 'p02': 'Hallway_04', 'p03': 'Hallway_07',
+                      self.player.player_id: 'Hallway_09', 'p05': 'Billiard'}}
 
         move_response = self.player.take_turn(game_state)
 
@@ -159,9 +159,9 @@ class AutoClientUnitTest(unittest.TestCase):
         """
         Tests that the player will move to a diagonal room when all other paths are blocked
         """
-        self.player.selected_player = 'Green'
+        self.player.player_id = 'p03'
         self.player.location = 'Lounge'
-        game_state = {'White': 'Hallway_02', 'Scarlet': 'Hallway_05', 'Green': 'Lounge'}
+        game_state = {'Positions': {'p01': 'Hallway_02', 'p02': 'Hallway_05', 'p03': 'Lounge'}}
 
         move_response = self.player.take_turn(game_state)
         subset_test = {'move': 'Conservatory'}
@@ -180,7 +180,7 @@ class AutoClientUnitTest(unittest.TestCase):
     def test_x_tells_y_that_x_has_card_suggested_by_y_and_y_marks_cell01_to_track_the_card(self):
         # scenario: Player 2 asks player 1 if he/she/it has a card. Player 1 responds that he/she/it
         # has one of the cards suggested. As a result, player2 marks a card cell in column 1 ('c1')
-        # with an x for player1. Player 2 is a Computer player, Player 1 could be a human or a computer player
+        # with a 1 for player1. Player 2 is a Computer player, Player 1 could be a human or a computer player
 
         """
         Tests that the proper cell is marked on this players pad for p01
@@ -192,7 +192,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         p01 = self.player.pad.get_player_table(suggestion['player'])
 
-        self.assertEqual(p01['c1'][respond_card], 'x', 'the value in the cell isn\'t x')
+        self.assertEqual(p01['c1'][respond_card], 1, 'the value in the cell isn\'t 1')
 
     def test_1_in_cell01_should_clear_cell02_for_all_other_players(self):
         # scenario: following an answer to a suggestion, this player has confirmed that answering
@@ -222,7 +222,6 @@ class AutoClientUnitTest(unittest.TestCase):
         # self.assertEqual(self.player.pad.get_player_table('p03').c1.White, int)
         # self.assertEqual(self.player.pad.get_player_table('p04').c1.White, int)
 
-
         # action-condition, cell01 for a card (card=White) has just been confirmed and marked (for p01)
         # on this player's pad
         suggestion = {'suggested': ['White', 'Billiard', 'Rope'], 'player': 'p01', 'responded': 'White'}
@@ -250,9 +249,9 @@ class AutoClientUnitTest(unittest.TestCase):
         from the suggestion.
         """
         suggestion = {'suggested': ['Mustard', 'Kitchen', 'Revolver'], 'player': 'p01', 'responded': True}
-        first_card = suggestion['suggested'][0].lower()
-        second_card = suggestion['suggested'][1].lower()
-        third_card = suggestion['suggested'][2].lower()
+        first_card = suggestion['suggested'][0]
+        second_card = suggestion['suggested'][1]
+        third_card = suggestion['suggested'][2]
 
         self.player.mark_pad(suggestion)
 
@@ -271,15 +270,15 @@ class AutoClientUnitTest(unittest.TestCase):
         """
         # setup player's pad so that three card cells already have a 1 in c2.
         p03 = self.player.pad.get_player_table('p03')
-        p03['c2']['scarlet'].add(1)
-        p03['c2']['hall'].add(1)
-        p03['c2']['rope'].add(1)
+        p03['c2']['Scarlet'].add(1)
+        p03['c2']['Hall'].add(1)
+        p03['c2']['Rope'].add(1)
 
         # the suggestion to player 3 already contains rope so mark the next column over for player 3
         suggestion = {'suggested': ['Mustard', 'Kitchen', 'Rope'], 'player': 'p03', 'responded': True}
-        first_card = suggestion['suggested'][0].lower()
-        second_card = suggestion['suggested'][1].lower()
-        third_card = suggestion['suggested'][2].lower()
+        first_card = suggestion['suggested'][0]
+        second_card = suggestion['suggested'][1]
+        third_card = suggestion['suggested'][2]
 
         self.player.mark_pad(suggestion)
 
@@ -295,7 +294,7 @@ class AutoClientUnitTest(unittest.TestCase):
         Tests that the player can move into the room and make a suggestion.
         """
         # just contains the part of the game state that includes where players are currently located
-        game_state = {'White': 'Hallway_02', 'Scarlet': 'Hallway_05', 'Green': 'Lounge'}
+        game_state = {'Positions': {'p01': 'Hallway_02', 'p02': 'Hallway_05', 'p03': 'Lounge'}}
 
         move_response = self.player.take_turn(game_state)
 

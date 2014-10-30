@@ -25,7 +25,7 @@ class Pad:
         """
         return self.player_pad.keys()
 
-    def get_player_table(self, player_id: str):
+    def get_player_table(self, player_id):
         """
         :param player_id: id of player table to retrieve
         :rtype : Pandas.DataFrame

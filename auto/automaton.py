@@ -22,13 +22,13 @@ class Player:
     # this class variable (might not be needed by dealer, but here for convenience)
     player_count = 0
 
-    def __init__(self, player_id, available_players_list, total_players: int):
+    def __init__(self, player_id, available_suspects_list, total_players):
         """
         Instantiate a player for the game and provided that the upper-limit of
         allowed players has not been reached.
 
         :param player_id: the id assigned to this player by the caller (p01 - p06)
-        :param available_players_list [list <string>]
+        :param available_suspects_list [list <string>]
         :param total_players: int
 
         :var
@@ -52,9 +52,9 @@ class Player:
             self.player_count += 1
 
             # instance variables needed for game play
-            self.selected_player = self.__get_player__(available_players_list)
+            self.selected_suspect = self._get_player(available_suspects_list)
             self.dealt_cards = []
-            self.location = self.get_starting_location(self.selected_player)
+            self.location = self.get_starting_location(self.selected_suspect)
             # prior moves will initially contain just the starting position for this player
             self.prior_moves = [self.location]
             # create a player pad for this player with the total number of players specified
@@ -85,7 +85,7 @@ class Player:
         return starting_positions[selected_player]
 
     @staticmethod
-    def __get_player__(available_players_list):
+    def _get_player(available_players_list):
         """
         Randomly choose a player from a list of available players.
 
@@ -95,7 +95,7 @@ class Player:
         """
         return random.choice(available_players_list)
 
-    def receive_cards(self, dealt_cards: list):
+    def receive_cards(self, dealt_cards):
         """
         Receive a set of cards from the dealer and store them.
 
@@ -219,7 +219,7 @@ class Player:
         available_moves = set()
         # if next moves show a match in game_state dictionary, then eliminate it from next_moves set
         for move in moves:
-            if move not in game_state.values():
+            if move not in game_state['Positions'].values():
                 available_moves.add(move)
         return available_moves
 
@@ -250,7 +250,7 @@ class Player:
         turn_response['move'] = ''
         return turn_response
 
-    def take_turn(self, game_state: dict):
+    def take_turn(self, game_state):
 
         # move block
         """
@@ -270,7 +270,7 @@ class Player:
 
         return turn_response
 
-    def question(self, question_asked: dict):
+    def question(self, question_asked):
 
         """
         Ask this computer player a question about whether they have one of three cards
@@ -283,7 +283,7 @@ class Player:
 
         return answer
 
-    def _mark_my_cards_on_pad(self, dealt_cards: list):
+    def _mark_my_cards_on_pad(self, dealt_cards):
 
         """
         Mark the cards this player was dealt.
