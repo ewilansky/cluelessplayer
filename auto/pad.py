@@ -33,19 +33,6 @@ class Pad:
         """
         return self.player_pad[player_id].table
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     # TODO: rewrite this so that it uses the index in the dataframe to make sure a valid card was specified
     def has_card(self, card, player):
 

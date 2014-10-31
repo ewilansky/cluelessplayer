@@ -41,7 +41,7 @@ class AutoClientUnitTest(unittest.TestCase):
         """
         Since no moves have been made, test that the instantiated player should be in the correct starting position.
         """
-        starting_position = self.player.get_starting_location(self.player.selected_suspect)
+        starting_position = get_starting_location(self.player.selected_suspect)
 
         if self.player.selected_suspect == 'Peacock':
             self.assertTrue(starting_position == 'Hallway_07')
@@ -305,6 +305,36 @@ class AutoClientUnitTest(unittest.TestCase):
         # make a suggestion. Next, come back to this test to ensure that the suggestion is called
         # from self.player.take_turn so that the move_response contains a suggestion to test
         self.assertEqual(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
+
+    def test_p01_makes_suggestion_to_p02_p02_responds_with_only_possible_match(self):
+
+        # set the player to p02
+        self.player.player_id = 'p02'
+
+        # setup p02's pad so that p02 has three cards marked
+        p02 = self.player.pad.get_player_table('p02')
+        p02['c1']['Mustard'] = 1
+        p02['c2']['Scarlet'] = 1
+        p02['c2']['Lounge'] = 1
+        p02['c2']['Knife'] = 1
+
+        #TODO create update function or maybe an update controller that arbitrates all of the
+        # communication between the server and the players after player initialization
+        # suggestion from p01. Server will send this information to all computer players. In the update method
+        # p02 will be the one to respond by calling its internal _answer method
+        move = {'move': 'Lounge', 'suggest': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}
+
+        self.assertEqual(self.player.answer(move['suggest']), 'Mustard')
+
+        # response to p01 must be an update that looks like this:
+        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': 'Mustard'}
+        #
+        #  response to all other players in game status looks like this:
+        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': True}
+
+
+    def test_p01_makes_suggestion_to_p04_p04_responds_with_no_card_match(self):
+        pass
 
     def test_move_and_accuse(self):
         """

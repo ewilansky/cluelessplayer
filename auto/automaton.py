@@ -19,7 +19,8 @@ class Player:
 
     """
     __board = Board()
-    # this class variable (might not be needed by dealer, but here for convenience)
+
+    # player_count class variable enforces the maximum # of players allowed. See IndexError in constructor
     player_count = 0
 
     def __init__(self, player_id, available_suspects_list, total_players):
@@ -33,14 +34,14 @@ class Player:
 
         :var
             class vars:
-            __board <networkx.Graph>
-            player_count <int>
+            __board: networkx.Graph
+            player_count: int
             instance vars:
-            selected_player <string>
-            dealt_cards [list<string>]
-            location <string>
-            prior_moves <string>
-            pad [dictionary<auto.PlayerMatrix>]
+            selected_player: string
+            dealt_cards: list<string>
+            location: string
+            prior_moves: string
+            pad: dictionary<auto.PlayerMatrix
 
         :raise
             IndexError if player count > 5
@@ -52,9 +53,9 @@ class Player:
             self.player_count += 1
 
             # instance variables needed for game play
-            self.selected_suspect = self._get_player(available_suspects_list)
+            self.selected_suspect = _get_player(available_suspects_list)
             self.dealt_cards = []
-            self.location = self.get_starting_location(self.selected_suspect)
+            self.location = get_starting_location(self.selected_suspect)
             # prior moves will initially contain just the starting position for this player
             self.prior_moves = [self.location]
             # create a player pad for this player with the total number of players specified
@@ -63,37 +64,6 @@ class Player:
 
         else:
             raise IndexError('no more than 5 computer players allowed')
-
-    @staticmethod
-    def get_starting_location(selected_player):
-        """
-        Gets the starting position of the selected player.
-
-        :param selected_player <string>
-        :return: the selected player's starting hallway position
-        :rtype : str
-        """
-        starting_positions = {
-            'Scarlet': 'Hallway_02',
-            'Mustard': 'Hallway_03',
-            'White': 'Hallway_05',
-            'Green': 'Hallway_06',
-            'Peacock': 'Hallway_07',
-            'Plum': 'Hallway_08'
-        }
-
-        return starting_positions[selected_player]
-
-    @staticmethod
-    def _get_player(available_players_list):
-        """
-        Randomly choose a player from a list of available players.
-
-        :param self:
-        :return: a randomly selected player
-        :rtype : str
-        """
-        return random.choice(available_players_list)
 
     def receive_cards(self, dealt_cards):
         """
@@ -270,18 +240,27 @@ class Player:
 
         return turn_response
 
-    def question(self, question_asked):
+    def answer(self, suggestion):
 
         """
         Ask this computer player a question about whether they have one of three cards
 
-        :param question_asked: dictionary containing two keys: player_name <string> and cards<list>. Cards should
-          contain three string values.
-        :return:
-        """
-        answer = "I don't have that card"
+        :param suggestion: list<string> containing three valid card values.
 
-        return answer
+        :return: string containing a valid card value or no_match
+        """
+
+        my_cards = self.pad.get_player_table(self.player_id)['c1']
+
+        # improve this by preferring not to return room cards because there are more
+        # room cards than any other cards. Helps to keep the other players guessing.
+        for card in suggestion:
+            if card in my_cards:
+                return card
+            else:
+                return 'no_match'
+
+
 
     def _mark_my_cards_on_pad(self, dealt_cards):
 
@@ -347,3 +326,34 @@ class Player:
         for player in self.pad.players_list:
             tbl = self.pad.get_player_table(player)
             tbl['c2'][card_provided].clear()
+
+
+def _get_player(available_players_list):
+    """
+    Randomly choose a player from a list of available players. This determines starting position on board.
+
+    :param available_players_list:list
+    :return: a randomly selected player
+    :rtype : str
+    """
+    return random.choice(available_players_list)
+
+
+def get_starting_location(selected_player):
+    """
+    Gets the starting position of the selected player.
+
+    :param selected_player <string>
+    :return: the selected player's starting hallway position
+    :rtype : str
+    """
+    starting_positions = {
+        'Scarlet': 'Hallway_02',
+        'Mustard': 'Hallway_03',
+        'White': 'Hallway_05',
+        'Green': 'Hallway_06',
+        'Peacock': 'Hallway_07',
+        'Plum': 'Hallway_08'
+    }
+
+    return starting_positions[selected_player]
