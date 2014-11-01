@@ -53,9 +53,9 @@ class Player:
             self.player_count += 1
 
             # instance variables needed for game play
-            self.selected_suspect = _get_player(available_suspects_list)
-            self.dealt_cards = []
-            self.location = get_starting_location(self.selected_suspect)
+            self.selected_suspect = self._get_player(available_suspects_list)
+            # self.dealt_cards = []
+            self.location = self._get_starting_location(self.selected_suspect)
             # prior moves will initially contain just the starting position for this player
             self.prior_moves = [self.location]
             # create a player pad for this player with the total number of players specified
@@ -76,9 +76,11 @@ class Player:
             IndexError if # of cards not between 3 and 6
             ValueError if cards dealt are not in Cards data structure
         """
-        if 3 <= len(dealt_cards) <= 6:
-            self.dealt_cards = dealt_cards
-        else:
+        # if 3 <= len(dealt_cards) <= 6:
+        # self.dealt_cards = dealt_cards
+        # else:
+
+        if not 3 <= len(dealt_cards) <= 6:
             raise IndexError('the number of cards dealt, must be between 3 and 6')
 
         for card in dealt_cards:
@@ -88,12 +90,51 @@ class Player:
 
         self._mark_my_cards_on_pad(dealt_cards)
 
-    def create_pad(self, number_players_in_game):
+    def update(self, game_state):
+
+        # example game_state for taking a turn that includes a suggestion
+        # game_state = {'move': {'location': 'Lounge', 'player_id': 'p01'},
+        # 'suggest': {'cards': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}}
+        if 'suggest' in game_state and game_state['suggest']['to_player'] == self.player_id:
+            return self._answer(game_state['suggest']['cards'])
+
+        # example game_state for letting the player who made a suggestion know of a response (directed answer)
+        # game_state = {'answer': 'Mustard', 'from_player': 'p02'}
+        # example game_state for letting other players know of a response (undirected answer)
+        # game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['Plum', 'Hall', 'Candlestick']}
+        if 'answer' in game_state:
+            self._mark_pad(game_state)
+
+            # example game_state when a player makes a move and nothing more
+            # game_state = {'move': }
+
+    def take_turn(self, game_state):
+
+        # move block
         """
-        Create a note pad based on the number of players in the game
-        :param number_players_in_game:
+        Take a turn given the game state.
+
+        :param game_state: dictionary containing the state of the game position, suggestion and accusation keys.
+          Key values are dictionaries as described in the interface specification.
+        :return: dictionary containing a moveto, suggest and accuse key. Suggest and accuse values are lists of string
         """
-        return Pad(number_players_in_game);
+        available_moves = self._filter_moves(game_state)
+        turn_response = self._make_move(available_moves)
+
+        # still need to make suggest and accuse functions that get called here
+        # if there is a suggestion or accusation, the privates will build-up the turn_response
+        # with additional information
+        # something like turn_response: self._suggest(turn_response)
+
+        return turn_response
+
+    # private functions
+    # def _create_pad(self, number_players_in_game):
+    #     """
+    #     Create a note pad based on the number of players in the game
+    #     :param number_players_in_game:
+    #     """
+    #     return Pad(number_players_in_game)
 
     @property
     def _get_suspects(self):
@@ -200,47 +241,27 @@ class Player:
 
         :param available_moves:
         :return: a dictionary containing the move command and a location to move or empty string
-        :rtype : dict{'move':<str>}
+        :rtype : dict{'move':<str>} example: {'move': {'location': 'Kitchen', 'player': 'p01'},
+
 
         """
-        turn_response = {}
+        turn_response = {'move': {'location': '', 'player': self.player_id}}
 
         for move in available_moves:
             if move not in self.prior_moves:
                 # populate the move key with this move (will be sent to caller)
-                turn_response['move'] = move
+                turn_response['move']['location'] = move
                 # add the move to prior moves list
                 self.prior_moves.append(move)
                 return turn_response
             elif move in self.prior_moves:
                 # take this move if it's available even if it has already been taken. Nothing else to do
-                turn_response['move'] = move
+                turn_response['move']['location'] = move
                 return turn_response
 
-        turn_response['move'] = ''
         return turn_response
 
-    def take_turn(self, game_state):
-
-        # move block
-        """
-        Take a turn given the game state.
-
-        :param game_state: dictionary containing the state of the game position, suggestion and accusation keys.
-          Key values are dictionaries as described in the interface specification.
-        :return: dictionary containing a moveto, suggest and accuse key. Suggest and accuse values are lists of string
-        """
-        available_moves = self._filter_moves(game_state)
-        turn_response = self._make_move(available_moves)
-        # still need to make suggest and accuse functions that get called here
-        # suggest block
-        # initially, all that's known are the cards in my deck and any suggestions made prior to this turn
-        # I will be creating a table with a column for each player and multiple cells/player (probably 10 or 12)
-        # in the player's column. Each row will be a card.
-
-        return turn_response
-
-    def answer(self, suggestion):
+    def _answer(self, suggestion):
 
         """
         Ask this computer player a question about whether they have one of three cards
@@ -260,8 +281,6 @@ class Player:
             else:
                 return 'no_match'
 
-
-
     def _mark_my_cards_on_pad(self, dealt_cards):
 
         """
@@ -276,7 +295,7 @@ class Player:
             # get this player's sub-table and mark that they have this set of cards (from 3 to 6)
             player_tbl['c1'][card] = 1
 
-    def mark_pad(self, suggestion):
+    def _mark_pad(self, game_state):
 
         # three possible suggestions are: True ("I have one of the cards suggested") if this player is not the one
         # making the suggestion. False, ("I don't have one of the cards suggested") whether or not this player is
@@ -285,18 +304,22 @@ class Player:
 
         """
         Given the suggestion, mark this player's pad.
-        :param suggestion:
+        :param game_state:
         """
 
-        answer = suggestion['responded']
-        responding_player = suggestion['player']
+        # example game_state for letting other players know of a response (undirected answer)
+        # game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['Plum', 'Hall', 'Candlestick']}
+
+
+        answer = game_state['answer']
+        responding_player = game_state['from_player']
         # for the current player, get the sub-table for the responding player
         responding_player_tbl = self.pad.get_player_table(responding_player)
 
         if answer is True:
-            card01 = suggestion['suggested'][0]
-            card02 = suggestion['suggested'][1]
-            card03 = suggestion['suggested'][2]
+            card01 = game_state['suggested'][0]
+            card02 = game_state['suggested'][1]
+            card03 = game_state['suggested'][2]
 
             # get the tracking cell lists
             cell01 = responding_player_tbl['c2'][card01]
@@ -328,32 +351,32 @@ class Player:
             tbl['c2'][card_provided].clear()
 
 
-def _get_player(available_players_list):
-    """
-    Randomly choose a player from a list of available players. This determines starting position on board.
+    def _get_player(self, available_players_list):
+        """
+        Randomly choose a player from a list of available players. This determines starting position on board.
 
-    :param available_players_list:list
-    :return: a randomly selected player
-    :rtype : str
-    """
-    return random.choice(available_players_list)
+        :param available_players_list:list
+        :return: a randomly selected player
+        :rtype : str
+        """
+        return random.choice(available_players_list)
 
 
-def get_starting_location(selected_player):
-    """
-    Gets the starting position of the selected player.
+    def _get_starting_location(self, selected_player):
+        """
+        Gets the starting position of the selected player.
 
-    :param selected_player <string>
-    :return: the selected player's starting hallway position
-    :rtype : str
-    """
-    starting_positions = {
-        'Scarlet': 'Hallway_02',
-        'Mustard': 'Hallway_03',
-        'White': 'Hallway_05',
-        'Green': 'Hallway_06',
-        'Peacock': 'Hallway_07',
-        'Plum': 'Hallway_08'
-    }
+        :param selected_player <string>
+        :return: the selected player's starting hallway position
+        :rtype : str
+        """
+        starting_positions = {
+            'Scarlet': 'Hallway_02',
+            'Mustard': 'Hallway_03',
+            'White': 'Hallway_05',
+            'Green': 'Hallway_06',
+            'Peacock': 'Hallway_07',
+            'Plum': 'Hallway_08'
+        }
 
-    return starting_positions[selected_player]
+        return starting_positions[selected_player]

@@ -41,7 +41,7 @@ class AutoClientUnitTest(unittest.TestCase):
         """
         Since no moves have been made, test that the instantiated player should be in the correct starting position.
         """
-        starting_position = get_starting_location(self.player.selected_suspect)
+        starting_position = self.player._get_starting_location(self.player.selected_suspect)
 
         if self.player.selected_suspect == 'Peacock':
             self.assertTrue(starting_position == 'Hallway_07')
@@ -168,7 +168,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.assertEquals(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
 
-    # tests for building the player pad data structure
+# region tests for building and working with the player pad data structure
     def test_creating_pad_data_structure_for_four_players(self):
 
         """
@@ -188,7 +188,7 @@ class AutoClientUnitTest(unittest.TestCase):
         suggestion = {'suggested': ['Plum', 'Ballroom', 'Wrench'], 'player': 'p01', 'responded': 'Ballroom'}
         respond_card = suggestion['responded']
 
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
 
         p01 = self.player.pad.get_player_table(suggestion['player'])
 
@@ -201,11 +201,11 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # pre-condition, some other players show cell02 for a card (card=White) with values
         suggestion = {'suggested': ['White', 'Kitchen', 'Revolver'], 'player': 'p02', 'responded': True}
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
         suggestion = {'suggested': ['Green', 'Ballroom', 'Pipe'], 'player': 'p03', 'responded': True}
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
         suggestion = {'suggested': ['White', 'Conservatory', 'Candlestick'], 'player': 'p02', 'responded': True}
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
 
         # get the player sub-tables for testing before and after the action condition
         p01_tbl = self.player.pad.get_player_table('p01')
@@ -225,7 +225,7 @@ class AutoClientUnitTest(unittest.TestCase):
         # action-condition, cell01 for a card (card=White) has just been confirmed and marked (for p01)
         # on this player's pad
         suggestion = {'suggested': ['White', 'Billiard', 'Rope'], 'player': 'p01', 'responded': 'White'}
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
 
         # assert values after the action condition
 
@@ -253,7 +253,7 @@ class AutoClientUnitTest(unittest.TestCase):
         second_card = suggestion['suggested'][1]
         third_card = suggestion['suggested'][2]
 
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
 
         p01 = self.player.pad.get_player_table(suggestion['player'])
 
@@ -280,23 +280,124 @@ class AutoClientUnitTest(unittest.TestCase):
         second_card = suggestion['suggested'][1]
         third_card = suggestion['suggested'][2]
 
-        self.player.mark_pad(suggestion)
+        self.player._mark_pad(suggestion)
 
         self.assertTrue(2 in p03['c2'][first_card] and 2 in p03['c2'][second_card] and 2 in p03['c2'][third_card],
                         '2 in {0}:{1}, 2 in {2}:{3}, 2 in {4}:{5}'.format(first_card, 2 in p03['c2'][first_card],
                         second_card, 2 in p03['c2'][second_card], third_card, 2 in p03['c2'][third_card]))
 
         # end tests of the pad data structure
-        # TODO: once the pad logic is solid, you can move on to the move and suggest and move and accuse tests
 
+    def test_p01_makes_suggestion_to_p02_p02_responds_with_only_possible_match(self):
+
+        # set the player to p02
+        self.player.player_id = 'p02'
+
+        # setup p02's pad so that p02 has some cards marked
+        p02 = self.player.pad.get_player_table('p02')
+        p02['c1']['Mustard'] = 1
+        p02['c2']['Scarlet'] = 1
+        p02['c2']['Lounge'] = 1
+        p02['c2']['Knife'] = 1
+
+        # suggestion from p01. Server will send this information to all computer players. In the update method
+        # p02 will be the only one responding by calling its internal _answer method
+        game_state = {'move': {'location': 'Lounge', 'player': 'p01'},
+                      'suggest': {'cards': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}}
+
+        self.assertEqual(self.player.update(game_state), 'Mustard')
+
+        # response to p01 must be an update that looks like this:
+        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': 'Mustard'}
+        #
+        #  response to all other players in game status looks like this:
+        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': True}
+
+    def test_p01_makes_suggestion_to_p02_and_other_players_like_p03_do_not_respond(self):
+
+        # set the player to p03
+        self.player.player_id = 'p03'
+
+        # setup p02's pad so that p02 has some cards marked
+        p02 = self.player.pad.get_player_table('p02')
+        p02['c1']['Mustard'] = 1
+        p02['c2']['Scarlet'] = 1
+        p02['c2']['Lounge'] = 1
+        p02['c2']['Knife'] = 1
+        p02['c2']['Rope'] = 1
+
+        game_state = {'move': {'location': 'Kitchen', 'player': 'p01'},
+                      'suggest': {'cards': ['Scarlet', 'Kitchen', 'Rope'], 'to_player': 'p02'}}
+
+        self.assertIsNone(self.player.update(game_state))
+
+    def test_update_provided_to_p01_following_matching_card_answer_given_by_p02(self):
+
+        # set the player to p01
+        self.player.player_id = 'p01'
+        game_state = {'answer': 'Mustard', 'from_player': 'p02'}
+        # mark column 2 for some other player to verify the column get cleared following
+        # confirmation that p02 has the card
+        self.player.pad.get_player_table('p03')['c2']['Mustard'].add(1)
+        self.player.pad.get_player_table('p03')['c2']['Mustard'].add(2)
+
+        self.player.update(game_state)
+
+        # p01 marked it's pad in the p02 column 1 Mustard cell with a 1
+        self.assertEquals(self.player.pad.get_player_table('p02')['c1']['Mustard'], 1)
+        # p01 cleared it's pad in the other player's column 2
+        self.assertFalse(self.player.pad.get_player_table('p03')['c2']['Mustard'])
+
+    def test_update_to_all_players_about_answer_to_suggestion(self):
+        """
+        All players other than the player making a suggestion and the player answering should mark
+        their c2 card columns for the suggested cards
+        """
+
+        # set the player to p04. A player who should get an undirected response
+        self.player.player_id = 'p04'
+        game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['Plum', 'Hall', 'Candlestick']}
+
+        self.player.update(game_state)
+
+        # verify that p04 has marked the p02 sub-table with the fact that one of these three cards are held by p02
+        for card in game_state['suggested']:
+            self.assertTrue(1 in self.player.pad.get_player_table('p02')['c2'][card])
+
+
+    def test_p01_makes_suggestion_to_p04_p04_responds_with_no_card_match(self):
+        """
+        All players should not mark anything if p04 doesn't have any cards asked
+
+        """
+        # will begin by checking that p01 (the asking player) doesn't mark anything
+        self.player.player_id = 'p01'
+        game_state = {'answer': False, 'from_player': 'p04', 'suggested': ['Plum', 'Hall', 'Candlestick']}
+        self.player.update(game_state)
+
+        for card in game_state['suggested']:
+            # c1 for all cards is not marked with a 1
+            self.assertFalse(self.player.pad.get_player_table('p04')['c1'][card] == 1)
+            # c2 for all cards is empty
+            self.assertFalse(1 in self.player.pad.get_player_table('p04')['c2'][card])
+        #TODO test another player's pad to make sure they also didn't mark anything
+
+# end region tests for building and working with the player pad data structure
+
+
+# region this player makes suggestions and accusations
     def test_move_and_suggest(self):
         """
         Tests that the player can move into the room and make a suggestion.
         """
-        # just contains the part of the game state that includes where players are currently located
-        game_state = {'Positions': {'p01': 'Hallway_02', 'p02': 'Hallway_05', 'p03': 'Lounge'}}
+        # a move sent by server in game_state. No suggestion or accusation made in this case
+        game_state = {'move': {'location': 'Hallway_02', 'player': 'p01'}}
 
         move_response = self.player.take_turn(game_state)
+
+        game_state = {'move': {'location': 'Kitchen', 'player': 'p01'},
+                      'suggest': {'cards': ['Scarlet', 'Kitchen', 'Rope'], 'to_player': 'p02'}}
+
 
         subset_test = {'suggest': ['Mustard', 'Lounge', 'Knife']}
 
@@ -306,45 +407,16 @@ class AutoClientUnitTest(unittest.TestCase):
         # from self.player.take_turn so that the move_response contains a suggestion to test
         self.assertEqual(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
 
-    def test_p01_makes_suggestion_to_p02_p02_responds_with_only_possible_match(self):
-
-        # set the player to p02
-        self.player.player_id = 'p02'
-
-        # setup p02's pad so that p02 has three cards marked
-        p02 = self.player.pad.get_player_table('p02')
-        p02['c1']['Mustard'] = 1
-        p02['c2']['Scarlet'] = 1
-        p02['c2']['Lounge'] = 1
-        p02['c2']['Knife'] = 1
-
-        #TODO create update function or maybe an update controller that arbitrates all of the
-        # communication between the server and the players after player initialization
-        # suggestion from p01. Server will send this information to all computer players. In the update method
-        # p02 will be the one to respond by calling its internal _answer method
-        move = {'move': 'Lounge', 'suggest': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}
-
-        self.assertEqual(self.player.answer(move['suggest']), 'Mustard')
-
-        # response to p01 must be an update that looks like this:
-        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': 'Mustard'}
-        #
-        #  response to all other players in game status looks like this:
-        # {'suggested': ['Mustard', 'Scarlet', 'Lounge'], 'player': 'p02', 'responded': True}
-
-
-    def test_p01_makes_suggestion_to_p04_p04_responds_with_no_card_match(self):
-        pass
-
     def test_move_and_accuse(self):
         """
         Tests that the player can move into a room and make an accusation.
         """
 
         pass
+# end region this player makes suggestions and accusations
 
 
-    # helper classes
+# region helper classes
     def __subdictionary_from_dictionary(self, subset_dictionary, dictionary):
         """
         Helper to replace deprecated assertDictContainsSubset
@@ -353,3 +425,4 @@ class AutoClientUnitTest(unittest.TestCase):
         :param dictionary: the full dictionary that should contain the subset
         """
         return dict([(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])
+# end region helper classes
