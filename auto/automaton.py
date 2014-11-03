@@ -40,7 +40,7 @@ class Player:
             selected_player: string
             dealt_cards: list<string>
             location: string
-            prior_moves: string
+            _prior_moves: string
             pad: dictionary<auto.PlayerMatrix
 
         :raise
@@ -54,10 +54,11 @@ class Player:
 
             # instance variables needed for game play
             self.selected_suspect = self._get_player(available_suspects_list)
-            # self.dealt_cards = []
+            # to start, the location is the starting position for this player based on selected suspect
             self.location = self._get_starting_location(self.selected_suspect)
-            # prior moves will initially contain just the starting position for this player
-            self.prior_moves = [self.location]
+
+            # prior moves set will initially contain just the starting position for this player
+            self._prior_moves = {self.location}
             # create a player pad for this player with the total number of players specified
             self.pad = Pad(total_players)
             self.player_id = player_id
@@ -118,6 +119,7 @@ class Player:
           Key values are dictionaries as described in the interface specification.
         :return: dictionary containing a moveto, suggest and accuse key. Suggest and accuse values are lists of string
         """
+
         available_moves = self._filter_moves(game_state)
         turn_response = self._make_move(available_moves)
 
@@ -179,7 +181,7 @@ class Player:
                 'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12']
 
     @property
-    def get_location(self):
+    def _get_location(self):
 
         """
         Get the location of this player and store it as an instance variable for tracking location.
@@ -188,6 +190,17 @@ class Player:
         :rtype: str
         """
         return self.location
+
+    def _set_location(self, game_state):
+        """
+        Sets the current location based on the game_state returned by the caller/server
+
+        :param game_state: {'positions': {<pid>: <location>, ...}}
+        :return:
+        """
+
+        self.location = game_state['positions'][self.player_id]
+        self._prior_moves.add(self.location)
 
     def _verify_card(self, card_to_verify):
 
@@ -225,13 +238,22 @@ class Player:
         :return: available, non-blocked moves
         :rtype: set<str>
         """
-        current_location = self.get_location
-        moves = self._next_moves(current_location)
+        # set current location to the position reported in game_state
+        self._set_location(game_state)
+        # get the possible next moves, given the current location
+        moves = self._next_moves(self.location)
+
         available_moves = set()
-        # if next moves show a match in game_state dictionary, then eliminate it from next_moves set
+        # if next moves show a match in the set of prior moves, then eliminate it from next_moves set
         for move in moves:
-            if move not in game_state['Positions'].values():
+            if move not in self._prior_moves:
                 available_moves.add(move)
+
+        # if available_moves is an empty set, then randomly select an available move
+        if not available_moves:
+            pick_me = random.sample(moves, 1)
+            available_moves.add(pick_me[0])
+
         return available_moves
 
     def _make_move(self, available_moves):
@@ -248,13 +270,13 @@ class Player:
         turn_response = {'move': {'location': '', 'player': self.player_id}}
 
         for move in available_moves:
-            if move not in self.prior_moves:
+            if move not in self._prior_moves:
                 # populate the move key with this move (will be sent to caller)
                 turn_response['move']['location'] = move
                 # add the move to prior moves list
-                self.prior_moves.append(move)
+                self._prior_moves.add(move)
                 return turn_response
-            elif move in self.prior_moves:
+            elif move in self._prior_moves:
                 # take this move if it's available even if it has already been taken. Nothing else to do
                 turn_response['move']['location'] = move
                 return turn_response
