@@ -35,19 +35,19 @@ class AutoClientUnitTest(unittest.TestCase):
         Test that a player object was returned.
         """
         self.assertTrue(self.player)
-        self.assertTrue(self.player.selected_suspect == 'Peacock' or 'Plum' or 'Green' or 'Mustard')
+        self.assertTrue(self.player._selected_suspect == 'Peacock' or 'Plum' or 'Green' or 'Mustard')
 
     def test_selected_player_in_correct_starting_position(self):
         """
         Since no moves have been made, test that the instantiated player should be in the correct starting position.
         """
-        starting_position = self.player._get_starting_location(self.player.selected_suspect)
+        starting_position = self.player._get_starting_location(self.player._selected_suspect)
 
-        if self.player.selected_suspect == 'Peacock':
+        if self.player._selected_suspect == 'Peacock':
             self.assertTrue(starting_position == 'Hallway_07')
-        elif self.player.selected_suspect == 'Plum':
+        elif self.player._selected_suspect == 'Plum':
             self.assertTrue(starting_position == 'Hallway_08')
-        elif self.player.selected_suspect == 'Green':
+        elif self.player._selected_suspect == 'Green':
             self.assertTrue(starting_position == 'Hallway_06')
         else:
             self.assertTrue(starting_position == 'Hallway_03')
@@ -62,7 +62,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # check that this player's table has been marked properly
         # with the cards dealt
-        tbl = self.player.pad.get_player_table(self.player.player_id)
+        tbl = self.player._pad.get_player_table(self.player.player_id)
 
         for card in self.dealt_cards:
             self.assertEqual(tbl['c1'][card], 1, '1 isn\'t in cell01 ({0})'.format(card))
@@ -110,7 +110,7 @@ class AutoClientUnitTest(unittest.TestCase):
     def test_where_player_is_on_board(self):
 
         """
-        Test that the players current location is correctly returned.
+        Test that the players current _location is correctly returned.
         """
         location = self.player._get_location
 
@@ -135,8 +135,8 @@ class AutoClientUnitTest(unittest.TestCase):
         Tests that this player (p04) will move to the Billiard Room because the p01 is blocking entry to the Library
         """
 
-        self.player.location = 'Hallway_06'
-        game_state = {'Positions': {'p01': 'Library', 'p02': 'Hallway_01', 'p03': 'Study', 'p04': 'Hallway_06'}}
+        self.player._location = 'Hallway_06'
+        game_state = {'positions': {'p01': 'Library', 'p02': 'Hallway_01', 'p03': 'Study', 'p04': 'Hallway_06'}}
         move_response = self.player.take_turn(game_state)
 
         self.assertDictEqual(move_response, {'move': 'Billiard'})
@@ -146,8 +146,8 @@ class AutoClientUnitTest(unittest.TestCase):
         Tests that the player (p04) can't move anywhere because all positions are blocked
         """
 
-        self.player.location = 'Billiard'
-        game_state = {'Positions': {'p01': 'Hallway_06', 'p02': 'Hallway_04', 'p03': 'Hallway_07',
+        self.player._location = 'Billiard'
+        game_state = {'positions': {'p01': 'Hallway_06', 'p02': 'Hallway_04', 'p03': 'Hallway_07',
                       self.player.player_id: 'Hallway_09', 'p05': 'Billiard'}}
 
         move_response = self.player.take_turn(game_state)
@@ -160,22 +160,22 @@ class AutoClientUnitTest(unittest.TestCase):
         Tests that the player will move to a diagonal room when all other paths are blocked
         """
         self.player.player_id = 'p03'
-        self.player.location = 'Lounge'
+        self.player._location = 'Lounge'
         game_state = {'positions': {'p01': 'Hallway_02', 'p02': 'Hallway_05', 'p03': 'Lounge'}}
 
         move_response = self.player.take_turn(game_state)
-        expected_response = {'move': {'location': 'Conservatory', 'player': 'p03'}}
+        expected_response = {'move': {'_location': 'Conservatory', 'player': 'p03'}}
 
         self.assertEquals(expected_response, self.__subdictionary_from_dictionary(expected_response, move_response))
 
-# region tests for building and working with the player pad data structure
+# region tests for building and working with the player _pad data structure
     def test_creating_pad_data_structure_for_four_players(self):
 
         """
-        Tests that a player pad for four players was created.
+        Tests that a player _pad for four players was created.
         """
         expected_list_of_keys = ['p01', 'p02', 'p03', 'p04']
-        self.assertEqual(sorted(self.player.pad.players_list), expected_list_of_keys)
+        self.assertEqual(sorted(self.player._pad.players_list), expected_list_of_keys)
 
     def test_p01_answers_p04_has_one_card_suggested(self):
         # scenario: p04 asks p01 if he/she/it has a card. P01 responds that he/she/it
@@ -183,14 +183,14 @@ class AutoClientUnitTest(unittest.TestCase):
         # p04 is a Computer player, p01 could be a human or a computer player
 
         """
-        Tests that the proper cell is marked on this players (p04's) pad for the p01 sub-table
+        Tests that the proper cell is marked on this players (p04's) _pad for the p01 sub-table
         """
 
         answer = {'answer': 'Plum', 'from_player': 'p01'}
 
         self.player.update(answer)
 
-        p01 = self.player.pad.get_player_table('p01')
+        p01 = self.player._pad.get_player_table('p01')
 
         self.assertEqual(p01.c1.Plum, 1, 'the value in the cell isn\'t 1')
 
@@ -199,9 +199,9 @@ class AutoClientUnitTest(unittest.TestCase):
         # player has one of the suggested cards. Therefore, this player must clear all c2 values for the
         # corresponding card on all player sub-tables, including this player
 
-        # player id from setup (self.player) is p04. Looking at this player's pad
+        # player id from setup (self.player) is p04. Looking at this player's _pad
 
-        # pre-condition, setup some other player sub-tables in p04's pad to show c2 for card = White with values
+        # pre-condition, setup some other player sub-tables in p04's _pad to show c2 for card = White with values
         game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['White', 'Kitchen', 'Revolver']}
         self.player.update(game_state)
         suggestion = {'answer': True, 'from_player': 'p02', 'suggested': ['White', 'Ballroom', 'Pipe']}
@@ -209,24 +209,24 @@ class AutoClientUnitTest(unittest.TestCase):
         suggestion = {'answer': True, 'from_Player': 'p02', 'suggested': ['White', 'Conservatory', 'Candlestick']}
         self.player.update(game_state)
 
-        # get the player sub-tables in p04's pad for testing before and after the action condition
-        p01_tbl = self.player.pad.get_player_table('p01')
-        p02_tbl = self.player.pad.get_player_table('p02')
-        p03_tbl = self.player.pad.get_player_table('p03')
-        p04_tbl = self.player.pad.get_player_table('p04')
+        # get the player sub-tables in p04's _pad for testing before and after the action condition
+        p01_tbl = self.player._pad.get_player_table('p01')
+        p02_tbl = self.player._pad.get_player_table('p02')
+        p03_tbl = self.player._pad.get_player_table('p03')
+        p04_tbl = self.player._pad.get_player_table('p04')
 
         # logging.debug('p02 c2:\n%s', p02_tbl.c2.White)
         # verify that the p02 player sub-table show c2 White with 1, 2 and 3 (3 suggestions)
         self.assertTrue(1 and 2 and 3 in p02_tbl.c2.White)
 
         # verify that no player sub-tables show c1 White marked
-        self.assertTrue(self.player.pad.get_player_table('p01').c1.White, np.nan)
-        self.assertTrue(self.player.pad.get_player_table('p02').c1.White, np.nan)
-        self.assertTrue(self.player.pad.get_player_table('p03').c1.White, np.nan)
-        self.assertTrue(self.player.pad.get_player_table('p04').c1.White, np.nan)
+        self.assertTrue(self.player._pad.get_player_table('p01').c1.White, np.nan)
+        self.assertTrue(self.player._pad.get_player_table('p02').c1.White, np.nan)
+        self.assertTrue(self.player._pad.get_player_table('p03').c1.White, np.nan)
+        self.assertTrue(self.player._pad.get_player_table('p04').c1.White, np.nan)
 
         # action-condition, c1 for a card (card = White) has just been confirmed and marked (for p01)
-        # on this player's pad
+        # on this player's _pad
         game_state = {'answer': 'White', 'from_player': 'p01'}
         self.player.update(game_state)
 
@@ -242,7 +242,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # scenario: When a suggestion is made, all other Computer players should mark their pads if
         # one player tells another player that he/she/it has a card. The other computer players won't
-        # know which card, just that the response was positive. Therefore, c2 for each player's pad
+        # know which card, just that the response was positive. Therefore, c2 for each player's _pad
         # gets appended with a number (increment) for a particular card.
 
         """
@@ -256,21 +256,21 @@ class AutoClientUnitTest(unittest.TestCase):
 
         self.player.update(game_state)
 
-        p01 = self.player.pad.get_player_table(game_state['from_player'])
+        p01 = self.player._pad.get_player_table(game_state['from_player'])
 
         self.assertTrue(1 in p01['c2'][first_card] and 1 in p01['c2'][second_card] and 1 in p01['c2'][third_card])
 
     def test_already_a_one_in_c2_for_one_of_the_cards_suggested_so_append_two_to_all_three_answered_card_cells(self):
         # scenario: a suggestion was made between two other players (not this player p04). One of the suggested
         # cards has already been marked in c2 for a sub-table being tracked by p04. Meaning that p04 has heard
-        # that the player answering has one of the cards being asked. Therefore, in p04's pad, enter a 2 in the player
+        # that the player answering has one of the cards being asked. Therefore, in p04's _pad, enter a 2 in the player
         # sub-table for teh player answering.
 
         """
         Tests that the column 2 (c3) gets a 2 for the cards suggested between two other players
         """
-        # setup player's pad so that three card cells already have a 1 in c2.
-        p03 = self.player.pad.get_player_table('p03')
+        # setup player's _pad so that three card cells already have a 1 in c2.
+        p03 = self.player._pad.get_player_table('p03')
         p03['c2']['Scarlet'].add(1)
         p03['c2']['Hall'].add(1)
         p03['c2']['Rope'].add(1)
@@ -294,8 +294,8 @@ class AutoClientUnitTest(unittest.TestCase):
         # set the player to p02
         self.player.player_id = 'p02'
 
-        # setup p02's pad so that p02 has some cards marked
-        p02 = self.player.pad.get_player_table('p02')
+        # setup p02's _pad so that p02 has some cards marked
+        p02 = self.player._pad.get_player_table('p02')
         p02['c1']['Mustard'] = 1
         p02['c2']['Scarlet'] = 1
         p02['c2']['Lounge'] = 1
@@ -303,7 +303,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # suggestion from p01. Server will send this information to all computer players. In the update method
         # p02 will be the only one responding by calling its internal _answer method
-        game_state = {'move': {'location': 'Lounge', 'player': 'p01'},
+        game_state = {'move': {'_location': 'Lounge', 'player': 'p01'},
                       'suggest': {'cards': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}}
 
         self.assertEqual(self.player.update(game_state), 'Mustard')
@@ -319,15 +319,15 @@ class AutoClientUnitTest(unittest.TestCase):
         # set the player to p03
         self.player.player_id = 'p03'
 
-        # setup p02's pad so that p02 has some cards marked
-        p02 = self.player.pad.get_player_table('p02')
+        # setup p02's _pad so that p02 has some cards marked
+        p02 = self.player._pad.get_player_table('p02')
         p02['c1']['Mustard'] = 1
         p02['c2']['Scarlet'] = 1
         p02['c2']['Lounge'] = 1
         p02['c2']['Knife'] = 1
         p02['c2']['Rope'] = 1
 
-        game_state = {'move': {'location': 'Kitchen', 'player': 'p01'},
+        game_state = {'move': {'_location': 'Kitchen', 'player': 'p01'},
                       'suggest': {'cards': ['Scarlet', 'Kitchen', 'Rope'], 'to_player': 'p02'}}
 
         self.assertIsNone(self.player.update(game_state))
@@ -339,15 +339,15 @@ class AutoClientUnitTest(unittest.TestCase):
         game_state = {'answer': 'Mustard', 'from_player': 'p02'}
         # mark column 2 for some other player to verify the column get cleared following
         # confirmation that p02 has the card
-        self.player.pad.get_player_table('p03')['c2']['Mustard'].add(1)
-        self.player.pad.get_player_table('p03')['c2']['Mustard'].add(2)
+        self.player._pad.get_player_table('p03')['c2']['Mustard'].add(1)
+        self.player._pad.get_player_table('p03')['c2']['Mustard'].add(2)
 
         self.player.update(game_state)
 
-        # p01 marked it's pad in the p02 column 1 Mustard cell with a 1
-        self.assertEquals(self.player.pad.get_player_table('p02')['c1']['Mustard'], 1)
-        # p01 cleared it's pad in the other player's column 2
-        self.assertFalse(self.player.pad.get_player_table('p03')['c2']['Mustard'])
+        # p01 marked it's _pad in the p02 column 1 Mustard cell with a 1
+        self.assertEquals(self.player._pad.get_player_table('p02')['c1']['Mustard'], 1)
+        # p01 cleared it's _pad in the other player's column 2
+        self.assertFalse(self.player._pad.get_player_table('p03')['c2']['Mustard'])
 
     def test_update_to_all_players_about_answer_to_suggestion(self):
         """
@@ -363,7 +363,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # verify that p04 has marked the p02 sub-table with the fact that one of these three cards are held by p02
         for card in game_state['suggested']:
-            self.assertTrue(1 in self.player.pad.get_player_table('p02')['c2'][card])
+            self.assertTrue(1 in self.player._pad.get_player_table('p02')['c2'][card])
 
 
     def test_p01_makes_suggestion_to_p04_p04_responds_with_no_card_match(self):
@@ -376,24 +376,24 @@ class AutoClientUnitTest(unittest.TestCase):
         game_state = {'answer': False, 'from_player': 'p04', 'suggested': ['Plum', 'Hall', 'Candlestick']}
         self.player.update(game_state)
 
-        # get the p04 sub-table in p01's pad
-        p04_tbl = self.player.pad.get_player_table('p04')
+        # get the p04 sub-table in p01's _pad
+        p04_tbl = self.player._pad.get_player_table('p04')
 
-        # get some other player sub-table in p01's pad (to verify the card doesn't get marked)
-        p02_tbl = self.player.pad.get_player_table('p02')
+        # get some other player sub-table in p01's _pad (to verify the card doesn't get marked)
+        p02_tbl = self.player._pad.get_player_table('p02')
 
-        # check p01's pad
+        # check p01's _pad
         for card in game_state['suggested']:
             # c1 for all cards is not marked with a 1 since p01 responded with no match
             self.assertFalse(p04_tbl.c1[card] == 1)
             # c2 for all cards is empty since p01 responded with no match
             self.assertFalse(1 in p04_tbl.c2[card])
 
-            # some other sub-table in p01's pad is also empty after this update.
+            # some other sub-table in p01's _pad is also empty after this update.
             self.assertFalse(p02_tbl.c1[card] == 1)
             self.assertFalse(1 in p02_tbl.c2[card])
 
-# end region tests for building and working with the player pad data structure
+# end region tests for building and working with the player _pad data structure
 
 # region this player taking turns
     def test_move_to_only_available_new_move(self):
@@ -414,13 +414,13 @@ class AutoClientUnitTest(unittest.TestCase):
 
         move_response = self.player.take_turn(game_state)
 
-        subset_test = {'move': {'location': 'Hallway_10', 'player': self.player.player_id}}
+        subset_test = {'move': {'_location': 'Hallway_10', 'player': self.player.player_id}}
 
         self.assertEqual(subset_test, self.__subdictionary_from_dictionary(subset_test, move_response))
 
     def test_move_to_prior_location_no_new_move_available(self):
         """
-        Tests that the player will randomly move to a prior location when there is no where else to move
+        Tests that the player will randomly move to a prior _location when there is no where else to move
         :return:
         """
 
@@ -436,7 +436,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         expected_response = {'Hallway_03', 'Hallway_06', 'Hallway_08'}
 
-        self.assertIn(move_response['move']['location'], expected_response)
+        self.assertIn(move_response['move']['_location'], expected_response)
 
 
     def test_suggest(self):
@@ -445,7 +445,7 @@ class AutoClientUnitTest(unittest.TestCase):
         # - c1 is not marked for Hall, Mustard or Candlestick in any player sub-table
 
         # put player in Hallway_01
-        self.player.location = 'Hallway_01'
+        self.player._location = 'Hallway_01'
         # mark that the player has already been in the study
         self.player._prior_moves.add('Study')
         # player4 was dealt Wrench, Green, Study

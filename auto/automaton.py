@@ -18,10 +18,10 @@ class Player:
     The player class to be instantiated for each requested Clue-Less computer/AI player
 
     """
-    __board = Board()
+    _board = Board()
 
-    # player_count class variable enforces the maximum # of players allowed. See IndexError in constructor
-    player_count = 0
+    # _player_count class variable enforces the maximum # of players allowed. See IndexError in constructor
+    _player_count = 0
 
     def __init__(self, player_id, available_suspects_list, total_players):
         """
@@ -34,33 +34,33 @@ class Player:
 
         :var
             class vars:
-            __board: networkx.Graph
-            player_count: int
+            _board: networkx.Graph
+            _player_count: int
             instance vars:
-            selected_player: string
-            dealt_cards: list<string>
-            location: string
-            _prior_moves: string
-            pad: dictionary<auto.PlayerMatrix
+            _selected_suspect: string
+            _location: string
+            _prior_moves: set<string>
+            _pad: dictionary<auto.PlayerMatrix
+            player_id: string
 
         :raise
             IndexError if player count > 5
         """
 
-        if self.player_count <= 5:
+        if self._player_count <= 5:
 
             # add to the player count so server knows # active autonomous player
-            self.player_count += 1
+            self._player_count += 1
 
             # instance variables needed for game play
-            self.selected_suspect = self._get_player(available_suspects_list)
-            # to start, the location is the starting position for this player based on selected suspect
-            self.location = self._get_starting_location(self.selected_suspect)
+            self._selected_suspect = self._get_player(available_suspects_list)
+            # to start, the _location is the starting position for this player based on selected suspect
+            self._location = self._get_starting_location(self._selected_suspect)
 
             # prior moves set will initially contain just the starting position for this player
-            self._prior_moves = {self.location}
-            # create a player pad for this player with the total number of players specified
-            self.pad = Pad(total_players)
+            self._prior_moves = {self._location}
+            # create a player _pad for this player with the total number of players specified
+            self._pad = Pad(total_players)
             self.player_id = player_id
 
         else:
@@ -94,7 +94,7 @@ class Player:
     def update(self, game_state):
 
         # example game_state for taking a turn that includes a suggestion
-        # game_state = {'move': {'location': 'Lounge', 'player_id': 'p01'},
+        # game_state = {'move': {'_location': 'Lounge', 'player_id': 'p01'},
         # 'suggest': {'cards': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}}
         if 'suggest' in game_state and game_state['suggest']['to_player'] == self.player_id:
             return self._answer(game_state['suggest']['cards'])
@@ -133,7 +133,7 @@ class Player:
     # private functions
     # def _create_pad(self, number_players_in_game):
     #     """
-    #     Create a note pad based on the number of players in the game
+    #     Create a note _pad based on the number of players in the game
     #     :param number_players_in_game:
     #     """
     #     return Pad(number_players_in_game)
@@ -184,23 +184,23 @@ class Player:
     def _get_location(self):
 
         """
-        Get the location of this player and store it as an instance variable for tracking location.
+        Get the _location of this player and store it as an instance variable for tracking _location.
 
-        :return: current location
+        :return: current _location
         :rtype: str
         """
-        return self.location
+        return self._location
 
     def _set_location(self, game_state):
         """
-        Sets the current location based on the game_state returned by the caller/server
+        Sets the current _location based on the game_state returned by the caller/server
 
-        :param game_state: {'positions': {<pid>: <location>, ...}}
+        :param game_state: {'positions': {<pid>: <_location>, ...}}
         :return:
         """
 
-        self.location = game_state['positions'][self.player_id]
-        self._prior_moves.add(self.location)
+        self._location = game_state['positions'][self.player_id]
+        self._prior_moves.add(self._location)
 
     def _verify_card(self, card_to_verify):
 
@@ -227,7 +227,7 @@ class Player:
         :return: a list of possible next moves
         :rtype: list<str>
         """
-        return self.__board.neighborhood(current_location, 1)
+        return self._board.neighborhood(current_location, 1)
 
     def _filter_moves(self, game_state):
 
@@ -238,10 +238,10 @@ class Player:
         :return: available, non-blocked moves
         :rtype: set<str>
         """
-        # set current location to the position reported in game_state
+        # set current _location to the position reported in game_state
         self._set_location(game_state)
-        # get the possible next moves, given the current location
-        moves = self._next_moves(self.location)
+        # get the possible next moves, given the current _location
+        moves = self._next_moves(self._location)
 
         available_moves = set()
         # if next moves show a match in the set of prior moves, then eliminate it from next_moves set
@@ -261,24 +261,24 @@ class Player:
         """
         Make a move
 
-        :param available_moves:
-        :return: a dictionary containing the move command and a location to move or empty string
-        :rtype : dict{'move':<str>} example: {'move': {'location': 'Kitchen', 'player': 'p01'},
+        :param available_moves:make
+        :return: a dictionary containing the move command and a _location to move or empty string
+        :rtype : dict{'move':<str>} example: {'move': {'_location': 'Kitchen', 'player': 'p01'},
 
 
         """
-        turn_response = {'move': {'location': '', 'player': self.player_id}}
+        turn_response = {'move': {'_location': '', 'player': self.player_id}}
 
         for move in available_moves:
             if move not in self._prior_moves:
                 # populate the move key with this move (will be sent to caller)
-                turn_response['move']['location'] = move
+                turn_response['move']['_location'] = move
                 # add the move to prior moves list
                 self._prior_moves.add(move)
                 return turn_response
             elif move in self._prior_moves:
                 # take this move if it's available even if it has already been taken. Nothing else to do
-                turn_response['move']['location'] = move
+                turn_response['move']['_location'] = move
                 return turn_response
 
         return turn_response
@@ -293,7 +293,7 @@ class Player:
         :return: string containing a valid card value or no_match
         """
 
-        my_cards = self.pad.get_player_table(self.player_id)['c1']
+        my_cards = self._pad.get_player_table(self.player_id)['c1']
 
         # improve this by preferring not to return room cards because there are more
         # room cards than any other cards. Helps to keep the other players guessing.
@@ -311,7 +311,7 @@ class Player:
         :type dealt_cards: list
         :param dealt_cards: 
         """
-        player_tbl = self.pad.get_player_table(self.player_id)
+        player_tbl = self._pad.get_player_table(self.player_id)
 
         for card in dealt_cards:
             # get this player's sub-table and mark that they have this set of cards (from 3 to 6)
@@ -325,7 +325,7 @@ class Player:
         # a match to share.
 
         """
-        Given the suggestion, mark this player's pad.
+        Given the suggestion, mark this player's _pad.
         :param game_state:
         """
 
@@ -336,7 +336,7 @@ class Player:
         answer = game_state['answer']
         responding_player = game_state['from_player']
         # for the current player, get the sub-table for the responding player
-        responding_player_tbl = self.pad.get_player_table(responding_player)
+        responding_player_tbl = self._pad.get_player_table(responding_player)
 
         if answer is True:
             card01 = game_state['suggested'][0]
@@ -368,14 +368,14 @@ class Player:
     def _clear_c2_cells(self, card_provided):
         # clear the corresponding col2 cell for the answered card
         # and do this for all of the players including this player
-        for player in self.pad.players_list:
-            tbl = self.pad.get_player_table(player)
+        for player in self._pad.players_list:
+            tbl = self._pad.get_player_table(player)
             tbl['c2'][card_provided].clear()
 
 
     def _get_player(self, available_players_list):
         """
-        Randomly choose a player from a list of available players. This determines starting position on board.
+        Randomly choose a player from a list of available players. This determines starting position on _board.
 
         :param available_players_list:list
         :return: a randomly selected player

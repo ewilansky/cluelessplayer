@@ -11,7 +11,7 @@ class PlayerMatrix:
             _rooms: dictionary
             _weapons: dictionary
             _cards: dictionary
-            _player_tracker: dictionary<Pandas.Series>
+            _tracker: dictionary<Pandas.Series>
 
         :rtype : Pandas.DataFrame
         """
@@ -29,11 +29,11 @@ class PlayerMatrix:
 
         _cards = _suspects.union(_rooms.union(_weapons))
 
-        _player_tracker = {'c1': pd.Series(int, index=_cards),
+        _tracker = {'c1': pd.Series(int, index=_cards),
                            'c2': pd.Series(
                                [set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(),
                                 set(), set(), set(), set(), set(), set(), set(), set(), set()],
                                index=_cards)}
 
         # data frame is a table for this user
-        self.table = pd.DataFrame(_player_tracker)
+        self.table = pd.DataFrame(_tracker)
