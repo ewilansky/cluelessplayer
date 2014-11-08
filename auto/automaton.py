@@ -47,6 +47,7 @@ class Player:
             IndexError if player count > 5
         """
 
+
         if self._player_count <= 5:
 
             # add to the player count so server knows # active autonomous player
@@ -61,6 +62,9 @@ class Player:
             self._prior_moves = {self._location}
             # create a player _pad for this player with the total number of players specified
             self._pad = Pad(total_players)
+            # TODO: write function to test this and set to True when preparing a accusation. This is used in update func
+            self._ready_to_accuse = False
+
             self.player_id = player_id
 
         else:
@@ -93,21 +97,34 @@ class Player:
 
     def update(self, game_state):
 
+        # TODO: get the actual game_states sent to update via the game_state param in a docstring. Get rid
+        # of other stuff here. Don't update until message format has settled.
         # example game_state for taking a turn that includes a suggestion
-        # game_state = {'move': {'_location': 'Lounge', 'player_id': 'p01'},
-        # 'suggest': {'cards': ['Mustard', 'Lounge', 'Rope'], 'to_player': 'p02'}}
-        if 'suggest' in game_state and game_state['suggest']['to_player'] == self.player_id:
-            return self._answer(game_state['suggest']['cards'])
+        # {‘move’: ’Study’, ’suggestion’: {‘from_player’: ‘p01’, ‘cards’: {’Mustard’, ‘Lounge’, ’Rope’}}}
 
         # example game_state for letting the player who made a suggestion know of a response (directed answer)
-        # game_state = {'answer': 'Mustard', 'from_player': 'p02'}
+        # {‘move_made’: True, ’answer’: {‘from_player’: ‘p02’, ‘card’: ‘Mustard’}}
         # example game_state for letting other players know of a response (undirected answer)
-        # game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['Plum', 'Hall', 'Candlestick']}
+        # {‘answer’: {‘from_player’: ‘p02’, ‘has_card’: True, ’suggestion’: {’Plum’, 'Hall‘, 'Candlestick’}}}
+
+
+        # server sends an update and directs the question to one of the players in each update. The server knows
+        # the player order and therefore the order in which the suggestion should be asked. For the autonomous
+        # players, only the player listed in to_player will respond to the update call in this case
+        if 'suggestion' in game_state:
+            suggestion = game_state['suggestion']
+            if 'to_player' in suggestion and suggestion[ 'to_player'] == self.player_id:
+                return self._answer(game_state['suggestion']['cards'])
+
         if 'answer' in game_state:
             self._mark_pad(game_state)
+            if not self._ready_to_accuse:
+                return {'turn_complete': True}
 
-            # example game_state when a player makes a move and nothing more
-            # game_state = {'move': }
+        # move was unsuccessful. Return to take_turn and try another move
+        if 'make_move' in game_state and not 'make_move':
+            pass # not implemented yet
+
 
     def take_turn(self, game_state):
 
@@ -293,15 +310,17 @@ class Player:
         :return: string containing a valid card value or no_match
         """
 
-        my_cards = self._pad.get_player_table(self.player_id)['c1']
+        cards = self._pad.get_player_table(self.player_id)['c1']
 
         # improve this by preferring not to return room cards because there are more
         # room cards than any other cards. Helps to keep the other players guessing.
+        # might want to create a stack where the first items in are rooms so that rooms would
+        # be the last items that are popped off the stack in an answer
         for card in suggestion:
-            if card in my_cards:
+            if card in cards[cards == 1]:
                 return card
-            else:
-                return 'no_match'
+
+        return 'no_match'
 
     def _mark_my_cards_on_pad(self, dealt_cards):
 
@@ -330,18 +349,18 @@ class Player:
         """
 
         # example game_state for letting other players know of a response (undirected answer)
-        # game_state = {'answer': True, 'from_player': 'p02', 'suggested': ['Plum', 'Hall', 'Candlestick']}
-
+        # {'answer': {'has_card': True, 'from_player': 'p02'}, 'suggestion': ['Plum', 'Hall', 'Candlestick']}
 
         answer = game_state['answer']
-        responding_player = game_state['from_player']
+        responding_player = answer['from_player']
         # for the current player, get the sub-table for the responding player
         responding_player_tbl = self._pad.get_player_table(responding_player)
 
-        if answer is True:
-            card01 = game_state['suggested'][0]
-            card02 = game_state['suggested'][1]
-            card03 = game_state['suggested'][2]
+        if 'has_card' in answer and answer['has_card'] is True:
+            suggestions = game_state['cards']
+            card01 = suggestions.pop()
+            card02 = suggestions.pop()
+            card03 = suggestions.pop()
 
             # get the tracking cell lists
             cell01 = responding_player_tbl['c2'][card01]
@@ -355,13 +374,13 @@ class Player:
             cell02.add(new_entry)
             cell03.add(new_entry)
 
-        elif answer is False:
-            pass
+        elif 'has_card' in answer and answer['has_card'] is False:
+            pass # no one has the suggested cards. It might be time to make an accusation
         else:
-            card_provided = answer
+            card_provided = answer['card']
 
             # locate player 1's column 1 for the specified card and put a 1 in it
-            responding_player_tbl['c1'][answer] = 1
+            responding_player_tbl['c1'][answer['card']] = 1
 
             self._clear_c2_cells(card_provided)
 
