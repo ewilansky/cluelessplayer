@@ -357,7 +357,7 @@ class Player:
         responding_player_tbl = self._pad.get_player_table(responding_player)
 
         if 'has_card' in answer and answer['has_card'] is True:
-            suggestions = game_state['cards']
+            suggestions = game_state['cards'].copy()
             card01 = suggestions.pop()
             card02 = suggestions.pop()
             card03 = suggestions.pop()
