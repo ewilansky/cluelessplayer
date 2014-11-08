@@ -100,8 +100,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         p02['c2']['Knife'] = 1
         p02['c2']['Rope'] = 1
 
-        game_state = {'move': {'_location': 'Kitchen', 'player': 'p01'},
-                      'suggest': {'cards': ['Scarlet', 'Kitchen', 'Rope'], 'to_player': 'p02'}}
+        game_state = {'move': 'Kitchen', 'suggestion': {'from_player': 'p01', 'cards': {'Scarlet', 'Kitchen', 'Rope'}}}
 
         self.assertIsNone(self.player.update(game_state))
 
@@ -188,17 +187,28 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         game_state = {'positions': {'p01': 'Kitchen', 'p02': 'Conservatory', 'p03': 'Hallway_11', 'p04': 'Hallway_01'}}
 
         # should look something like this. The weapon and suspect will likely be different
-        # {‘move': 'Study', 'suggestion': {‘from_player': ‘p01', ‘cards': {'Hall', ‘Candlestick', 'Scarlet'}}}
+        # {‘move': 'Hall', 'suggestion': {‘from_player': ‘p01', ‘cards': {'Hall', ‘Candlestick', 'Scarlet'}}}
         actual_response = self.player.take_turn(game_state)
 
+        # the room the player moved to is Hall so that's the room in the suggestion
         expected_move = 'Hall'
-        # this will be the case because this player ('p04') was dealt Wrench and Green
-        expected_cards_not = {'Wrench', 'Green'}
+
+        cards_suggested = actual_response['suggestion']['cards']
 
         self.assertEqual(actual_response['move'], expected_move)
         self.assertEqual(actual_response['suggestion']['from_player'], 'p04')
+        self.assertIn('Hall', cards_suggested)
 
-        # TODO: working on this test
+        # assert that the suggested suspect is a card not yet matched with a player
+        possible_suspects = self.player._get_suspects().intersection(cards)
+        suspect_match = possible_suspects.intersection(cards_suggested)
+        self.assertIsNotNone(suspect_match)
+
+        # assert that the suggested weapon is a card not yet matched with a player
+        possible_weapons = self.player._get_weapons().intersection(cards)
+        weapons_match = possible_weapons.intersection(cards_suggested)
+        self.assertIsNotNone(weapons_match)
+
 
     def test_accuse(self):
         """
@@ -251,7 +261,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         # tp03 = pd.get_player_table('p03').c1
         # tp04 = pd.get_player_table('p04').c1
         #
-        logging.debug('p01:\n%s p02:\n%s, p03:\n%s, p04:\n%s', tp01, tp02, tp03, tp04)
+        # logging.debug('p01:\n%s p02:\n%s, p03:\n%s, p04:\n%s', tp01, tp02, tp03, tp04)
 
         # since a move was already made, all that will be done is to make an accusation
         # and state that the player is finished taking a turn

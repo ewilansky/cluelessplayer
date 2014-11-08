@@ -120,8 +120,8 @@ class AutoCoreUnitTests(unittest.TestCase):
         self.assertIn(location, all_locations)
 
     # region: helper functions
-    @property
-    def _get_lobbies(self):
+    @staticmethod
+    def _get_lobbies():
 
         """
         Get the lobbies that are valid for this game.
