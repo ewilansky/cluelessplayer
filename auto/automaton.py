@@ -2,6 +2,7 @@ import random
 import itertools
 from auto.board import Board
 from auto.pad import Pad
+import numpy as np
 
 """
     :module:: automaton
@@ -46,7 +47,6 @@ class Player:
         :raise
             IndexError if player count > 5
         """
-
 
         if self._player_count <= 5:
 
@@ -113,17 +113,19 @@ class Player:
         # players, only the player listed in to_player will respond to the update call in this case
         if 'suggestion' in game_state:
             suggestion = game_state['suggestion']
-            if 'to_player' in suggestion and suggestion[ 'to_player'] == self.player_id:
+            if 'to_player' in suggestion and suggestion['to_player'] == self.player_id:
                 return self._answer(game_state['suggestion']['cards'])
 
         if 'answer' in game_state:
-            self._mark_pad(game_state)
-            if not self._ready_to_accuse:
+            accusation = self._mark_pad(game_state)
+            if not accusation:
                 return {'turn_complete': True}
+            else:
+                return accusation
 
         # move was unsuccessful. Return to take_turn and try another move
         if 'make_move' in game_state and not 'make_move':
-            pass # not implemented yet
+            pass  # not implemented yet
 
 
     def take_turn(self, game_state):
@@ -146,14 +148,6 @@ class Player:
         # something like turn_response: self._suggest(turn_response)
 
         return turn_response
-
-    # private functions
-    # def _create_pad(self, number_players_in_game):
-    #     """
-    #     Create a note _pad based on the number of players in the game
-    #     :param number_players_in_game:
-    #     """
-    #     return Pad(number_players_in_game)
 
     @property
     def _get_suspects(self):
@@ -249,27 +243,32 @@ class Player:
     def _filter_moves(self, game_state):
 
         """
-        Find current position and next moves. This removes moves that are blocked.
+        Remove moves that are blocked and favor moves that haven't been taken.
 
         :param game_state:
-        :return: available, non-blocked moves
+        :return: a available, non-blocked move
         :rtype: set<str>
         """
         # set current _location to the position reported in game_state
         self._set_location(game_state)
         # get the possible next moves, given the current _location
-        moves = self._next_moves(self._location)
+        next_moves = self._next_moves(self._location)
+        # get this player's prior moves
+        prior_moves = self._prior_moves
+        # get current positions of all players
+        occupied_locations = game_state['positions'].values()
 
-        available_moves = set()
-        # if next moves show a match in the set of prior moves, then eliminate it from next_moves set
-        for move in moves:
-            if move not in self._prior_moves:
-                available_moves.add(move)
+        # if next moves is a position currently occupied by another player or next moves contains a match with
+        # prior moves, then it's not an available move or a favored move from the set of possible moves.
+        available_moves = next_moves.difference(occupied_locations)
+        available_moves = available_moves.difference(prior_moves)
 
-        # if available_moves is an empty set, then randomly select an available move
+        # if available_moves is an empty set, then randomly select an available move if there is one available
         if not available_moves:
-            pick_me = random.sample(moves, 1)
-            available_moves.add(pick_me[0])
+            possible_moves = next_moves.difference(occupied_locations)
+            if len(possible_moves) > 0:
+                pick_me = random.sample(possible_moves, 1)
+                available_moves.add(pick_me[0])
 
         return available_moves
 
@@ -280,22 +279,21 @@ class Player:
 
         :param available_moves:make
         :return: a dictionary containing the move command and a _location to move or empty string
-        :rtype : dict{'move':<str>} example: {'move': {'_location': 'Kitchen', 'player': 'p01'},
-
+        :rtype : dict{'move':<str>} example: {'move': 'Kitchen'}
 
         """
-        turn_response = {'move': {'_location': '', 'player': self.player_id}}
+        turn_response = {'move': ''}
 
         for move in available_moves:
             if move not in self._prior_moves:
                 # populate the move key with this move (will be sent to caller)
-                turn_response['move']['_location'] = move
+                turn_response['move'] = move
                 # add the move to prior moves list
                 self._prior_moves.add(move)
                 return turn_response
             elif move in self._prior_moves:
                 # take this move if it's available even if it has already been taken. Nothing else to do
-                turn_response['move']['_location'] = move
+                turn_response['move'] = move
                 return turn_response
 
         return turn_response
@@ -375,7 +373,7 @@ class Player:
             cell03.add(new_entry)
 
         elif 'has_card' in answer and answer['has_card'] is False:
-            pass # no one has the suggested cards. It might be time to make an accusation
+            pass  # no one has the suggested cards. It might be time to make an accusation
         else:
             card_provided = answer['card']
 
@@ -383,6 +381,9 @@ class Player:
             responding_player_tbl['c1'][answer['card']] = 1
 
             self._clear_c2_cells(card_provided)
+
+        # this will only return a set of cards if it's time to accuse
+        return self._analyze_table_to_accuse()
 
     def _clear_c2_cells(self, card_provided):
         # clear the corresponding col2 cell for the answered card
@@ -421,3 +422,29 @@ class Player:
         }
 
         return starting_positions[selected_player]
+
+    def _analyze_table_to_accuse(self):
+
+        # create a set to hold unverified cards
+        unverified_cards = set()
+
+        # get all of the cards using any player table to get the cards
+        cards = self._pad.get_player_table('p01').axes[0].tolist()
+        player_pad = self._pad.player_pad
+
+        # for each card, check each c1 cell sub-table. If not checked, add it to unverified_cards
+        for card in cards:
+            i = 0
+            for key in player_pad.keys():
+                if self._pad.get_player_table(key).c1[card] == 1:
+                    break;
+                else:
+                    # the cell must not be marked
+                    # if self._pad.get_player_table(key).c1[card] == np.nan:
+                    i += 1
+
+                if i == 4:
+                    unverified_cards.add(card)
+
+        if len(unverified_cards) == 3:
+            return unverified_cards
