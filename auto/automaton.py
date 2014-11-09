@@ -121,7 +121,7 @@ class Player:
             if not accusation:
                 return {'turn_complete': True}
             else:
-                return accusation
+                return {'accusation': {'from_player': self.player_id, 'cards': accusation}, 'turn_complete': True}
 
         # move was unsuccessful. Return to take_turn and try another move
         if 'make_move' in game_state and not 'make_move':
@@ -378,6 +378,8 @@ class Player:
             card_provided = answer['card']
 
             # locate player 1's column 1 for the specified card and put a 1 in it
+            # TODO: if c1 is already checked somewhere else then this is either a lie or a code bug.
+            # must deal with this condition in code.
             responding_player_tbl['c1'][answer['card']] = 1
 
             self._clear_c2_cells(card_provided)

@@ -26,9 +26,10 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # create a computer player and specify the total number of players in this game
         self.player = Player('p04', available_suspects, 4)
+        # with four players, 2 players will get 4 cards and 2 players will get 5 cards
 
         # receive cards from dealer
-        self.dealt_cards = ['Wrench', 'Green', 'Study']
+        self.dealt_cards = ['Wrench', 'Green', 'Study', 'Hall']
         self.player.receive_cards(self.dealt_cards)
 
     def test_player_instantiated(self):
@@ -405,7 +406,7 @@ class AutoClientUnitTest(unittest.TestCase):
 
         # will begin by checking that p01 (the asking player) doesn't mark anything
         self.player.player_id = 'p01'
-        game_state = {'answer': {'from_player': 'p04', 'has_card': False}, 'cards': {'Plum', 'Hall', 'Candlestick'}}
+        game_state = {'answer': {'from_player': 'p04', 'has_card': False}, 'cards': {'Plum', 'Kitchen', 'Candlestick'}}
         self.player.update(game_state)
 
         # get the p04 sub-table in p01's _pad
@@ -503,13 +504,23 @@ class AutoClientUnitTest(unittest.TestCase):
         # p03 is going to tell p04 this card so remove it from cards to be marked as a pre-condition
         cards.remove('Kitchen')
 
+        # p04 was dealt cards that were marked when p04 was instantiated. So remove these cards too
+        cards.remove('Study')
+        cards.remove('Green')
+        cards.remove('Wrench')
+        cards.remove('Hall')
+
         # cards to be marked
+        # p01 has 5 cards
         for card in cards[0:5]:
             self.player._pad.get_player_table('p01')['c1'][card] = 1
-        for card in cards[6:11]:
+        # p02 has 5 cards, we know 4 of them
+        for card in cards[5:10]:
             self.player._pad.get_player_table('p02')['c1'][card] = 1
-        for card in cards[12:16]:
+        # p03 has 4 cards
+        for card in cards[10:14]:
             self.player._pad.get_player_table('p03')['c1'][card] = 1
+        # p04 has 4 cards, which were dealt and marked on the pad for this player
 
         # part way through a turn. So far, p04 has moved and made a suggestion. As a result,
         # p03 responds with a match of Kitchen. This is the final condition needed for p04
@@ -518,8 +529,19 @@ class AutoClientUnitTest(unittest.TestCase):
 
         actual_response = self.player.update(game_state)
 
+        # for table debugging. Not necessary for the test.
+        # pd = self.player._pad
+        # tp01 = pd.get_player_table('p01').c1
+        # tp02 = pd.get_player_table('p02').c1
+        # tp03 = pd.get_player_table('p03').c1
+        # tp04 = pd.get_player_table('p04').c1
+        #
+        # logging.debug('p01:\n%s p02:\n%s, p03:\n%s, p04:\n%s', tp01, tp02, tp03, tp04)
+
         # since a move was already made, all that will be done is to make an accusation
-        expected_response = {'accusation': {'from_player': 'p04', 'cards': {'Study', 'Candlestick', 'Scarlet'}}}
+        # and state that the player is finished taking a turn
+        expected_response = {'accusation': {'from_player': 'p04', 'cards': {'Plum', 'Rope', 'Dining'}},
+                             'turn_complete': True}
 
         self.assertEqual(expected_response, actual_response)
 
