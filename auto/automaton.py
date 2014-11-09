@@ -62,8 +62,8 @@ class Player:
             self._prior_moves = {self._location}
             # create a player _pad for this player with the total number of players specified
             self._pad = Pad(total_players)
-            # TODO: write function to test this and set to True when preparing a accusation. This is used in update func
-            self._ready_to_accuse = False
+            # get the cards for various private functions
+            self._cards = self._pad.get_player_table(player_id).axes[0].tolist()
 
             self.player_id = player_id
 
@@ -107,7 +107,6 @@ class Player:
         # example game_state for letting other players know of a response (undirected answer)
         # {‘answer’: {‘from_player’: ‘p02’, ‘has_card’: True, ’suggestion’: {’Plum’, 'Hall‘, 'Candlestick’}}}
 
-
         # server sends an update and directs the question to one of the players in each update. The server knows
         # the player order and therefore the order in which the suggestion should be asked. For the autonomous
         # players, only the player listed in to_player will respond to the update call in this case
@@ -142,22 +141,21 @@ class Player:
         available_moves = self._filter_moves(game_state)
         turn_response = self._make_move(available_moves)
 
-        # still need to make suggest and accuse functions that get called here
-        # if there is a suggestion or accusation, the privates will build-up the turn_response
-        # with additional information
-        # something like turn_response: self._suggest(turn_response)
+        # call make_suggestion here. Make accusation is handled in update. Not sure if it needs to also
+        # be called from here. Will check later
+        # turn_response = self._make_suggestion(turn_response)
 
         return turn_response
 
-    @property
-    def _get_suspects(self):
-        """
-        Get the suspects that are valid for this game.
-
-        :return: valid suspects
-        :rtype: list<str>
-        """
-        return ['Mustard', 'Scarlet', 'White', 'Plum', 'Green', 'Peacock']
+    # @property
+    # def _get_suspects(self):
+    #     """
+    #     Get the suspects that are valid for this game.
+    #
+    #     :return: valid suspects
+    #     :rtype: set<str>
+    #     """
+    #     return {'Mustard', 'Scarlet', 'White', 'Plum', 'Green', 'Peacock'}
 
     @property
     def _get_rooms(self):
@@ -165,31 +163,19 @@ class Player:
         Get the rooms that are valid for this game.
 
         :return: valid rooms
-        :rtype: list<str>
+        :rtype: set<str>
         """
-        return ['Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen']
+        return {'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'}
 
-    @property
-    def _get_weapons(self):
-        """
-        Get the weapons that are valid for this game.
-
-        :return: valid weapons
-        :rtype: list<str>
-        """
-        return ['Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick']
-
-    @property
-    def _get_lobbies(self):
-
-        """
-        Get the lobbies that are valid for this game.
-
-        :return: valid lobbies
-        :rtype: list<str>
-        """
-        return ['Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
-                'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12']
+    # @property
+    # def _get_weapons(self):
+    #     """
+    #     Get the weapons that are valid for this game.
+    #
+    #     :return: valid weapons
+    #     :rtype: set<str>
+    #     """
+    #     return {'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'}
 
     @property
     def _get_location(self):
@@ -222,10 +208,10 @@ class Player:
         :return: true if card is valid. Otherwise, false
         :rtype: bool
         """
-        cards = [self._get_suspects, self._get_rooms, self._get_weapons]
-        allCards = list(itertools.chain(*cards))
+        # all_cards = self._get_suspects.union(self._get_rooms.union(self._get_weapons))
+        # all_cards = list(itertools.chain(*cards))
 
-        if card_to_verify in allCards:
+        if card_to_verify in self._cards:
             return True
         else:
             return False
@@ -297,6 +283,17 @@ class Player:
                 return turn_response
 
         return turn_response
+
+    def _make_suggestion(self, move_selected):
+
+        # moved to a room, can make suggestion
+        if move_selected['move'] in self._get_rooms:
+            # check the pad to see what cards are unknown
+            cards = self._get_unknown_cards()
+            # except for the room card, pick two unknown cards, one suspect, one weapon
+            # if there is only one category of unknown card, choose one of your cards in the known
+            # card category to trip-up opponents
+        #TODO: working on this function
 
     def _answer(self, suggestion):
 
@@ -394,7 +391,6 @@ class Player:
             tbl = self._pad.get_player_table(player)
             tbl['c2'][card_provided].clear()
 
-
     def _get_player(self, available_players_list):
         """
         Randomly choose a player from a list of available players. This determines starting position on _board.
@@ -404,7 +400,6 @@ class Player:
         :rtype : str
         """
         return random.choice(available_players_list)
-
 
     def _get_starting_location(self, selected_player):
         """
@@ -427,19 +422,37 @@ class Player:
 
     def _analyze_table_to_accuse(self):
 
+        # get all of the cards
+        cards = self._pad.get_player_table(self.player_id).axes[0].tolist()
+
+        unverified_cards = self._get_unknown_cards()
+
+        if len(unverified_cards) == 3:
+            return unverified_cards
+
+    def _get_unknown_cards(self):
+        """
+        Get the cards that aren't marked in a player's tracking pad
+
+        :param cards: list of all cards in deck
+        :return: unknown cards
+        """
+
+        # get this player's pad
+        pad = self._pad
+
+        # get all of the cards in the game
+        cards = self._pad.get_player_table(self.player_id).axes[0].tolist()
+
         # create a set to hold unverified cards
         unverified_cards = set()
-
-        # get all of the cards using any player table to get the cards
-        cards = self._pad.get_player_table('p01').axes[0].tolist()
-        player_pad = self._pad.player_pad
 
         # for each card, check each c1 cell sub-table. If not checked, add it to unverified_cards
         for card in cards:
             i = 0
-            for key in player_pad.keys():
-                if self._pad.get_player_table(key).c1[card] == 1:
-                    break;
+            for key in pad.player_pad.keys():
+                if pad.get_player_table(key).c1[card] == 1:
+                    break
                 else:
                     # the cell must not be marked
                     # if self._pad.get_player_table(key).c1[card] == np.nan:
@@ -448,5 +461,5 @@ class Player:
                 if i == 4:
                     unverified_cards.add(card)
 
-        if len(unverified_cards) == 3:
-            return unverified_cards
+
+        return unverified_cards

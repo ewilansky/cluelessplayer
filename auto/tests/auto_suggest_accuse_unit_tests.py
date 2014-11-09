@@ -30,6 +30,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         self.dealt_cards = ['Wrench', 'Green', 'Study', 'Hall']
         self.player.receive_cards(self.dealt_cards)
 
+
     def test_update_workflow_p01_makes_suggestion_p02_responds_with_only_possible_match(self):
 
         """
@@ -168,18 +169,36 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         # region this player taking turns
 
     def test_suggest(self):
-        # scenario: p04 moves to Hall and suggests Hall, Mustard, Candlestick because:
-        # - it's a valid next move (currently in Hallway_01, 02 or 04)
-        # - c1 is not marked for Hall, Mustard or Candlestick in any player sub-table
+        # scenario: p04 moves to Hall and suggests Hall, any unknown suspect and weapon because:
+        # - Hall is the only next move (currently in Hallway_01) and has been in Study
+        # - c1 is marked for Hall in p04's sub-table. It was a dealt card in test setup
+        # - will find any other unmarked suspects and weapons and suggest those.
+        # Room selection is not
 
-        # put player in Hallway_01
-        self.player._location = 'Hallway_01'
-        # mark that the player has already been in the study
+        # mark that this player (p04) has already been in the study
         self.player._prior_moves.add('Study')
-        # player4 was dealt Wrench, Green, Study
+        # player4 was dealt Hall, Wrench, Green, Study in test setup so remove them from the card list
+        cards = self.player._cards
+        cards.remove('Hall')
+        cards.remove('Wrench')
+        cards.remove('Green')
+        cards.remove('Study')
 
-        # think about how you decide what to suggest. Pretty much if c1 is empty, the card is available to guess
-        # might have to mark 1 for everything except these three cells in c1 across all sub-tables
+        # put this player in Hallway_01
+        game_state = {'positions': {'p01': 'Kitchen', 'p02': 'Conservatory', 'p03': 'Hallway_11', 'p04': 'Hallway_01'}}
+
+        # should look something like this. The weapon and suspect will likely be different
+        # {‘move': 'Study', 'suggestion': {‘from_player': ‘p01', ‘cards': {'Hall', ‘Candlestick', 'Scarlet'}}}
+        actual_response = self.player.take_turn(game_state)
+
+        expected_move = 'Hall'
+        # this will be the case because this player ('p04') was dealt Wrench and Green
+        expected_cards_not = {'Wrench', 'Green'}
+
+        self.assertEqual(actual_response['move'], expected_move)
+        self.assertEqual(actual_response['suggestion']['from_player'], 'p04')
+
+        # TODO: working on this test
 
     def test_accuse(self):
         """
@@ -188,9 +207,8 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         # mark all cells in c1 sub-tables except for three total. Three remaining open cells means that it's time
         # to make an accusation. p04 is current player from test setup
 
-        # using private methods for directly marking pad (this is just for setting-up the pre-condition)
-        player_matrix = pm.PlayerMatrix()
-        cards = player_matrix.table.axes[0].tolist()
+        # all of the cards in this game
+        cards = self.player._cards
         # remove three cards to simulate the hidden cards
         cards.remove('Plum')
         cards.remove('Rope')
@@ -206,16 +224,18 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         cards.remove('Hall')
 
         # cards to be marked
-        # p01 has 5 cards
+        # p01 has 5 cards (assign 5 cards, 0 through 4)
         for card in cards[0:5]:
             self.player._pad.get_player_table('p01')['c1'][card] = 1
-        # p02 has 5 cards, we know 4 of them
+        # p02 has 5 cards (assign 5 cards, 5 through 9)
         for card in cards[5:10]:
             self.player._pad.get_player_table('p02')['c1'][card] = 1
-        # p03 has 4 cards
-        for card in cards[10:14]:
+        # p03 has 4 cards. But p04 only knows 3 of them until the upcoming suggestion
+        # (assign 3 cards, 10 through 12)
+        for card in cards[10:13]:
             self.player._pad.get_player_table('p03')['c1'][card] = 1
         # p04 has 4 cards, which were dealt and marked on the pad for this player
+        # 17 cards total have been marked in this player's pad.
 
         # part way through a turn. So far, p04 has moved and made a suggestion. As a result,
         # p03 responds with a match of Kitchen. This is the final condition needed for p04
@@ -231,7 +251,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         # tp03 = pd.get_player_table('p03').c1
         # tp04 = pd.get_player_table('p04').c1
         #
-        # logging.debug('p01:\n%s p02:\n%s, p03:\n%s, p04:\n%s', tp01, tp02, tp03, tp04)
+        logging.debug('p01:\n%s p02:\n%s, p03:\n%s, p04:\n%s', tp01, tp02, tp03, tp04)
 
         # since a move was already made, all that will be done is to make an accusation
         # and state that the player is finished taking a turn
@@ -239,3 +259,14 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
                              'turn_complete': True}
 
         self.assertEqual(expected_response, actual_response)
+
+    # region helper classes
+    def _subdictionary_from_dictionary(self, subset_dictionary, dictionary):
+        """
+            Helper to replace deprecated assertDictContainsSubset
+
+            :param subset_dictionary: the dictionary subset in which to test
+            :param dictionary: the full dictionary that should contain the subset
+            """
+        return dict(
+            [(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])  # end region helper classes

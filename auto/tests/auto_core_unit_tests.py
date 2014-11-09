@@ -110,11 +110,24 @@ class AutoCoreUnitTests(unittest.TestCase):
     def test_where_player_is_on_board(self):
 
         """
-        Test that the players current _location is correctly returned.
+        Test that the player's current _location is correctly returned.
         """
         location = self.player._get_location
 
-        location_categories = [self.player._get_rooms, self.player._get_lobbies]
+        location_categories = [self.player._get_rooms, self._get_lobbies]
         all_locations = list(itertools.chain(*location_categories))
 
         self.assertIn(location, all_locations)
+
+    # region: helper functions
+    @property
+    def _get_lobbies(self):
+
+        """
+        Get the lobbies that are valid for this game.
+
+        :return: valid lobbies
+        :rtype: list<str>
+        """
+        return {'Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
+                'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12'}

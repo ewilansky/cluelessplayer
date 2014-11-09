@@ -129,4 +129,4 @@ class AutoMoveUnitTests(unittest.TestCase):
             :param dictionary: the full dictionary that should contain the subset
             """
         return dict(
-            [(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])  # end region helper classes
+            [(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])
