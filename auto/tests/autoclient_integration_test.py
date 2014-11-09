@@ -2,10 +2,6 @@ import socket
 import json
 import unittest
 
-# socket mocking framework to turn this into a unit test...
-# from mocket.mocket import Mocket, Mocketizer, MocketEntry
-
-
 class AutoClientIntegrationTest(unittest.TestCase):
     def setUp(self):
         # connect socket to server
