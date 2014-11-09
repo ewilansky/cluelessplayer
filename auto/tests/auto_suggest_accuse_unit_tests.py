@@ -6,9 +6,9 @@ import auto.playermatrix as pm
 from auto.automaton import Player
 
 
-class AutoTakeTurnUnitTests(unittest.TestCase):
+class AutoSuggestAccuseUnitTests(unittest.TestCase):
     """
-    Testing the automaton player taking a turn (move, suggest, accuse)
+    Testing the automaton player's suggest and accuse logic
     """
 
     def setUp(self):
