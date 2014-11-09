@@ -9,7 +9,7 @@ from auto.automaton import Player
 
 class AutoPadUnitTests(unittest.TestCase):
     """
-    The automaton Player unit test class
+    Testing the automaton player's interactions with its note pad
     """
 
     def setUp(self):

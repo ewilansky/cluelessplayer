@@ -8,7 +8,7 @@ from auto.automaton import Player
 
 class AutoCoreUnitTests(unittest.TestCase):
     """
-    The automaton Player unit test class
+    Testing the automaton player's core functions associated with instantiation
     """
 
     def setUp(self):

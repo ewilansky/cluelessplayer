@@ -7,7 +7,7 @@ from auto.automaton import Player
 
 class AutoMoveUnitTests(unittest.TestCase):
     """
-    The automaton Player unit test class
+    Testing the automaton player's move actions
     """
 
     def setUp(self):

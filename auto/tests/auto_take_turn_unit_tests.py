@@ -8,7 +8,7 @@ from auto.automaton import Player
 
 class AutoTakeTurnUnitTests(unittest.TestCase):
     """
-    The automaton Player unit test class
+    Testing the automaton player taking a turn (move, suggest, accuse)
     """
 
     def setUp(self):
