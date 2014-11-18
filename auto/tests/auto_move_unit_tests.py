@@ -45,11 +45,10 @@ class AutoMoveUnitTests(unittest.TestCase):
         Tests that this player (p04) will move to the Billiard Room because the p01 is blocking entry to the Library
         """
 
-        self.player._location = 'Hallway_06'
         game_state = {'positions': {'p01': 'Library', 'p02': 'Hallway_01', 'p03': 'Study', 'p04': 'Hallway_06'}}
         move_response = self.player.take_turn(game_state)
 
-        self.assertDictEqual(move_response, {'move': 'Billiard'})
+        self.assertEqual(move_response['move'], 'Billiard')
 
     def test_cannot_move_out_from_current_position_all_moves_are_blocked(self):
         """
@@ -62,7 +61,7 @@ class AutoMoveUnitTests(unittest.TestCase):
 
         move_response = self.player.take_turn(game_state)
 
-        self.assertDictEqual(move_response, {'move': ''})
+        self.assertEqual(move_response['move'], '')
 
     def test_can_move_to_diagonal_room(self):
 
@@ -74,9 +73,8 @@ class AutoMoveUnitTests(unittest.TestCase):
         game_state = {'positions': {'p01': 'Hallway_02', 'p02': 'Hallway_05', 'p03': 'Lounge'}}
 
         move_response = self.player.take_turn(game_state)
-        expected_response = {'move': 'Conservatory'}
 
-        self.assertEquals(expected_response, self._subdictionary_from_dictionary(expected_response, move_response))
+        self.assertEquals(move_response['move'], 'Conservatory')
 
     def test_move_to_only_available_new_move(self):
         """
@@ -96,9 +94,7 @@ class AutoMoveUnitTests(unittest.TestCase):
 
         move_response = self.player.take_turn(game_state)
 
-        subset_test = {'move': 'Hallway_10'}
-
-        self.assertEqual(subset_test, self._subdictionary_from_dictionary(subset_test, move_response))
+        self.assertEqual(move_response['move'], 'Hallway_10')
 
     def test_move_to_prior_location_no_new_move_available(self):
         """
@@ -119,14 +115,3 @@ class AutoMoveUnitTests(unittest.TestCase):
         expected_response = {'Hallway_03', 'Hallway_06', 'Hallway_08'}
 
         self.assertIn(move_response['move'], expected_response)
-
-    # region helper classes
-    def _subdictionary_from_dictionary(self, subset_dictionary, dictionary):
-        """
-            Helper to replace deprecated assertDictContainsSubset
-
-            :param subset_dictionary: the dictionary subset in which to test
-            :param dictionary: the full dictionary that should contain the subset
-            """
-        return dict(
-            [(k, dictionary[k]) for k in subset_dictionary.keys() if k in dictionary.keys()])

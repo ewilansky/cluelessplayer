@@ -114,14 +114,16 @@ class AutoCoreUnitTests(unittest.TestCase):
         """
         location = self.player._get_location
 
-        location_categories = [self.player._get_rooms, self._get_lobbies]
-        all_locations = list(itertools.chain(*location_categories))
+        rooms = self.player._get_rooms()
+        hallways = self._get_hallways()
 
-        self.assertIn(location, all_locations)
+        locations = rooms.union(hallways)
+
+        self.assertIn(location, locations)
 
     # region: helper functions
     @staticmethod
-    def _get_lobbies():
+    def _get_hallways():
 
         """
         Get the lobbies that are valid for this game.

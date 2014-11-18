@@ -2,7 +2,6 @@ import unittest
 import logging
 import sys
 
-import auto.playermatrix as pm
 from auto.automaton import Player
 
 
@@ -89,6 +88,10 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
             self.assertTrue(2 in self.player._pad.get_player_table('p02')['c2'][card])
 
     def test_p01_makes_suggestion_to_p02_and_other_players_like_p03_do_not_respond(self):
+        """
+        Test that players who shouldn't respond to a suggestion, don't
+        """
+
         # set the player to p03
         self.player.player_id = 'p03'
 
