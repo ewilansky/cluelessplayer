@@ -44,13 +44,13 @@ class AutoCoreUnitTests(unittest.TestCase):
         starting_position = self.player._get_starting_location(self.player._selected_suspect)
 
         if self.player._selected_suspect == 'Peacock':
-            self.assertTrue(starting_position == 'Hallway_07')
-        elif self.player._selected_suspect == 'Plum':
             self.assertTrue(starting_position == 'Hallway_08')
+        elif self.player._selected_suspect == 'Plum':
+            self.assertTrue(starting_position == 'Hallway_03')
         elif self.player._selected_suspect == 'Green':
             self.assertTrue(starting_position == 'Hallway_06')
         else:
-            self.assertTrue(starting_position == 'Hallway_03')
+            self.assertTrue(starting_position == 'Hallway_05')
 
     def test_that_valid_set_of_dealt_cards_in_this_players_subtable_in_pad(self):
         """
