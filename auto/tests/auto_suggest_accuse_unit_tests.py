@@ -65,10 +65,10 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
         response = self.player.update(game_state)
         self.assertEqual(response, 'Mustard')
 
-        # send the same game_state to another player and verify that they don't respond because they are not p02
-        # and they don't have a card
+        # send the same game_state to another player and verify that they
+        # respond with no match because they don't have a card
         self.player.player_id = 'p03'
-        self.assertIsNone(self.player.update(game_state))
+        self.assertEqual(self.player.update(game_state), 'no_match')
 
         # server sends an update to 'p01' with acknowledgement of their move and the card revealed by the other player
         self.player.player_id = 'p01'
@@ -105,7 +105,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
 
         game_state = {'move': 'Kitchen', 'suggestion': {'from_player': 'p01', 'cards': {'Scarlet', 'Kitchen', 'Rope'}}}
 
-        self.assertIsNone(self.player.update(game_state))
+        self.assertEqual(self.player.update(game_state), 'no_match')
 
     def test_update_provided_to_p01_following_matching_card_answer_given_by_p02(self):
         # set the player to p01

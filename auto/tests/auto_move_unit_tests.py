@@ -24,8 +24,9 @@ class AutoMoveUnitTests(unittest.TestCase):
         # create a computer player and specify the total number of players in this game
         self.player = Player('p04', available_suspects, 4)
         # with four players, 2 players will get 4 cards and 2 players will get 5 cards
+        # from the caller (server)
 
-        # receive cards from dealer
+        # receive cards from dealer/caller
         self.dealt_cards = ['Wrench', 'Green', 'Study', 'Hall']
         self.player.receive_cards(self.dealt_cards)
 
@@ -78,7 +79,7 @@ class AutoMoveUnitTests(unittest.TestCase):
 
     def test_move_to_only_available_new_move(self):
         """
-        Tests that the player can move into the room and make a suggestion.
+        Tests that the player will move to a room that player hasn't occupied yet.
         """
 
         # game_state sent by server showing where players are currently positioned.
@@ -115,3 +116,34 @@ class AutoMoveUnitTests(unittest.TestCase):
         expected_response = {'Hallway_03', 'Hallway_06', 'Hallway_08'}
 
         self.assertIn(move_response['move'], expected_response)
+
+    def test_move_attempt_failed_reported_by_caller_move_removed_from_prior_moves(self):
+
+        # player current positions
+        game_state = {'positions': {'p01': 'Lounge', 'p02': 'Billiard', 'p03': 'Hallway_01', 'p04': 'Library'}}
+
+        move_response = self.player.take_turn(game_state)
+
+        move_taken = move_response['move']
+
+        # check that prior to an update from the caller, the move just taken is in the list of prior moves
+        self.assertIn(move_taken, self.player._prior_moves)
+
+        # caller states that the move couldn't be made. This is a rare and possibly impossible edge case
+        # because the autonomous player will not attempt to move to a blocked location. However, in the
+        # event that something in the caller caused the move to fail, the autonomous player needs to
+        # react to the failure
+        game_state = {'move_made': False}
+
+        # tell this player the move wasn't successful
+        ack = self.player.update(game_state)
+
+        # verify acknowledgement that this player is done with the turn
+        self.assertEqual(ack, {'turn_complete': True})
+
+        # verify that the move was removed from prior moves. Again, while this is an unlikely situation,
+        # if the caller does return False for move_made, then removing the move taken from prior moves
+        # is important. The possible side-effect is that this player might have taken this move more than
+        # once. If so, it will appear to this player that the move was never taken. This is not a
+        # big issue, but worth noting this edge case.
+        self.assertNotIn(move_taken, self.player._prior_moves)
