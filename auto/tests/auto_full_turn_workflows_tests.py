@@ -57,8 +57,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             available_suspects.remove(suspect_allocated)
             # end verify suspect in correct starting position
 
-
-    def test_move_suggest(self):
+    def test_game_workflow(self):
         # create player with 6 players (full player board) and deal cards
         players = self._setup_players(6)
         places_on_board = ['Billiard', 'Kitchen', 'Hallway_06', 'Hallway_10', 'Lounge', 'Conservatory']
@@ -156,29 +155,27 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # receives the position update, it will automatically change its position
         game_state = self.get_game_state(players)
         # adjust the one player's position who was in the suggestion
-        game_state[player.player_id] = room_in_suggestion
+        game_state['positions'][player.player_id] = room_in_suggestion
 
         # send position update to all players. In this case, show new location information for the player in the
         # suggestion
         player.update(game_state)
 
-        # player._location = room_in_suggestion
-        # player._prior_moves_stack.append(room_in_suggestion)
-        # player._prior_moves.add(room_in_suggestion)
-        self.assertEqual(player._location, room_in_suggestion)
         print('\nplayer id: {0} has suspect: {1} and moves to the {2} room'
               .format(player.player_id, player._selected_suspect, player._location))
 
+        self.assertEqual(player._location, room_in_suggestion)
 
+        # now let's make it the players turn who got moved to a room as a result of a suggestion by another player.
+        # In this case, this player makes a suggestion from the current room and doesn't move from that room
+        turn_msg = player.take_turn(game_state)
 
-    def test_move_accuse(self):
-        pass
+        print('\nThe player {0} stays in the {1} room and suggests {2}'
+              .format(turn_msg['suggestion']['from_player'],
+                      room_in_suggestion, turn_msg['suggestion']['cards']))
 
-    def test_move_suggest_accuse(self):
-        pass
-
-    def test_accuse(self):
-        pass
+        # proves that the room value is empty when the player takes the turn
+        self.assertEqual(turn_msg['move'], '')
 
     def move(self):
         # mark everything as known except a location that this player must move
