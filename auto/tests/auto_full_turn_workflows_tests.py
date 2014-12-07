@@ -63,11 +63,12 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         places_on_board = ['Billiard', 'Kitchen', 'Hallway_06', 'Hallway_10', 'Lounge', 'Conservatory']
         game_state = {'positions': {}}
 
-        print('dealt cards and suspects selected/assigned:')
+        print('+ deal and select suspects')
+        print('\tdealt cards and suspects selected/assigned:')
         for player in players:
-            cards = self.get_marked_cards(player)
+            cards = self._get_marked_cards(player)
             self.assertEqual(len(cards), 3)
-            print('{0} dealt: {1} and selected suspect: {2}'.
+            print('\t\t{0} dealt: {1} and selected suspect: {2}'.
                   format(player.player_id, str(cards), player._selected_suspect))
             cards.clear()
 
@@ -76,8 +77,11 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             # build-up game_state for later testing
             game_state['positions'][player.player_id] = player._location
 
-        # get player02 for further testing
+        print('\n++ get {0} for further testing'.format(players[1].player_id))
+
         p02 = players[1]
+
+        print('\tmark-up {0}\'s pad with these cards:'.format(p02.player_id))
         marked_cards = set()
 
         # fill this player's pad with cards that have been learned. Mark everything except for one card, which will
@@ -91,7 +95,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             player_sub_table = p02._pad.get_player_table(player.player_id)
 
             # mark each dealt card (except for the last card (card #18) for other computer players on p02's pad
-            for card in self.get_marked_cards(player):
+            for card in self._get_marked_cards(player):
                 if len(marked_cards) < 17:
                     player_sub_table['c1'][card] = 1
                     # add cards to the marked cards set
@@ -104,22 +108,32 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         unknown_cards = all_cards.difference(marked_cards)
         # endregion
 
-        # logging.debug('p02 knows of:\n%s', marked_cards)
-        print("\np02 knows of {0} cards:".format(len(marked_cards)))
-        print(textwrap.fill(str(marked_cards)))
+        print('\t{0} now knows of {1} cards:'.format(p02.player_id, len(marked_cards)))
+        print('\t{0}'.format(textwrap.fill(str(marked_cards))))
+
+        print('\t{0} doesn\'t know of these cards: {1}.\n'
+              '\tThree are in the middle and one is held by another player).\n'
+              '\tPlease don\'t tell.'
+              .format(p02.player_id, unknown_cards))
 
         # assert that p02 is in the lounge
         self.assertEqual(p02._location, game_state['positions'][p02.player_id])
 
+        print('\n+++ players moved on the board to the following (static):')
         # display current positions from game state
         self._display_player_position_game_state(game_state)
 
+        print('\n +++++ {0} takes a turn'.format(p02.player_id))
         # p02 will now be told to take turns. If the logic is right and given the current game state,
         # the player should first move to a hallway since currently p02 is in the lounge.
         turn_msg = p02.take_turn(game_state)
         self.assertIn(turn_msg['move'], ['Hallway_02', 'Hallway_05'])
-        print('\np02 requests to move to {0}'.format(turn_msg['move']))
+        print('\tp02 requests to move to {0}'.format(turn_msg['move']))
 
+        print('\tmove analysis')
+        self._display_move_analysis(p02)
+
+        print('\n ++++++ server sends an update to the player to acknowledge the move')
         # the turn_msg is received by the caller and the caller returns an acknowledgement that the move was successful
         # the caller sends that success to the player making the move, like so:
         player_msg = p02.update({'move_made': True})
@@ -128,19 +142,16 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         self.assertEqual(player_msg, {'turn_complete': True})
 
         # the caller (server) will then call update for all players. The game_state will now look like this:
-        game_state = self.get_game_state(players)
+        game_state = self._get_position_game_state(players)
         self._display_player_position_game_state(game_state)
 
         # let's have p02 take more turns to see how this player reacts going forward. The player should now
         # move to a room and make a suggestion from that room
-        print('\np02 takes a turn to move from a hallway to a room')
+        print('\n +++++++ {0} takes another turn to move from a hallway to a room'.format(p02.player_id))
         turn_msg = p02.take_turn(game_state)
 
-        #TODO: the current move from turn_msg is now in the prior_moves array so point-out that
-        #the current move is in the prior_moves array
-        print("\np02's prior moves in move order are:", p02._prior_moves_stack)
-        print('\np02 is suspect {0} who starts in {1} as shown in prior moves stack'.
-              format(p02._selected_suspect, p02._get_starting_location(p02._selected_suspect)))
+        print('\tmove analysis')
+        self._display_move_analysis(p02)
 
         self.assertEqual(p02._get_starting_location(p02._selected_suspect), p02._prior_moves_stack[0])
 
@@ -156,7 +167,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # The caller (server) has the responsibility for completing the action of changing the position of the
         # player suspect in the suggestion and sending that through game_state. When the player in the suggestion
         # receives the position update, it will automatically change its position
-        game_state = self.get_game_state(players)
+        game_state = self._get_position_game_state(players)
         # adjust the one player's position who was in the suggestion
         game_state['positions'][player.player_id] = room_in_suggestion
 
@@ -177,7 +188,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         request_order = self._arrange_circular_order(2, players)
         # starting at p03 (player after p02), return responses to suggestions until the answer isn't
         # no_match or all players announce they don't have any of the cards suggested. No one has
-        # # the suggested card if the loop continues until reaching the asking player (p02).
+        # the suggested card if the loop continues until reaching the asking player (p02).
         for player in request_order:
             response = player.update(turn_msg)
             print('\n {0} responded: {1}'.format(player.player_id, response))
@@ -210,16 +221,41 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             # caller (server) also sends all other players an update that one of the players had
             # one of the cards suggested
             cards_suggested = turn_msg['suggestion']['cards']
-            print('\nThe undirected response sent by the server to all players.')
             game_state = {'answer': {'from_player': player_with_card, 'has_card': True},
                           'cards': cards_suggested}
+
+            print('\nThe undirected response sent by the server to all players is: {0}'
+                  .format(game_state))
+
+            # game_state sent to example player, p03:
+            response = players[2].update(game_state)
+
+            print(response)
+
         else:
             # no player had any of the suggested cards so send updates with that information
-            pass
-            # response = p02.
+            print('\nserver sends the following update to {0}: {1}'
+                  .format(p02.player_id, game_state))
+
+            response = p02.update(game_state)
+
+            print('\n{0} responds: {1}'.format(p02.player_id, response))
+
+            # server constructs this message for all other players
+            game_state = game_state.setdefault('cards', turn_msg['suggestion']['cards'])
+
+            print('\nserver sends all other players this no_match response: {0}', game_state)
+            # example of how p03 responds
+            response = players[2].update(game_state)
+            print('\n{0} acknowledges the update by sending: {1}'.format(player[2].player_id, response))
+
+        # The server now constructs position game_state, which is then sent to the player next in line
+        # to take a turn
+        game_state = self._get_position_game_state(players)
 
         # now let's make it the players turn who got moved to a room as a result of a suggestion by another player.
         # In this case, this player makes a suggestion from the current room and doesn't move from that room
+        print('{0} takes a turn'.format(players[2].player_id))
         turn_msg = player.take_turn(game_state)
 
         print('\nSince player {0} got to the {1} room as a result of a suggestion, {0} remains there and suggests {2}'
@@ -228,11 +264,6 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         # proves that the room value is empty when the player takes the turn
         self.assertEqual(turn_msg['move'], '')
-
-    def move(self):
-        # mark everything as known except a location that this player must move
-        # to in multiple turns before making a suggestion
-        pass
 
     # helper methods
     def _setup_players(self, total_players):
@@ -271,9 +302,102 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         return players
 
+    @staticmethod
+    def _get_cards():
+        """
+        Convenience method for getting all of the cards in this game
+        :rtype : set
+        :return: a set of cards
+        """
+        _suspects = {
+            'Scarlet', 'Plum', 'Mustard', 'Green', 'White', 'Peacock'
+        }
+
+        _rooms = {
+            'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'
+        }
+
+        _weapons = {
+            'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
+        }
+
+        # TODO remove if this comment isn't removed
+        _hallways = {
+            'Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
+            'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12'
+        }
+
+        return _suspects.union(_rooms.union(_weapons))
+
+    def _get_marked_cards(self, player):
+        """
+        Retrieves dealt or discovered cards
+
+        :param player: the player whose cards will be retrieved
+        :return: a list of cards
+        """
+
+        cards = []
+        column = player._pad.get_player_table(player.player_id)['c1']
+        i = 0
+        for cell in column:
+            if cell == 1:
+                cards.append(column.index[i])
+            i += 1
+
+        return cards
+
+    def _display_player_position_game_state(self, game_state):
+        """
+        Pretty prints game state
+
+        :param game_state:
+        """
+        print('\tgame_state positions\n{0}'.format(
+              textwrap.fill(
+                  str(
+                      [(key, game_state['positions'][key]) for key in sorted(game_state['positions'].keys())]
+                  )
+              )
+        ))
+
+    def _display_move_analysis(self, p02):
+        # the current move is in the prior_moves array
+        print("\t\tp02's prior moves in move order (includes move just taken):\n", p02._prior_moves_stack)
+        print('\t\tp02 is suspect {0} who starts in {1} as shown in prior moves stack'.
+              format(p02._selected_suspect, p02._get_starting_location(p02._selected_suspect)))
+
+    def _get_player_from_suspect(self, players, turn_msg):
+        suspect = self._match_card_with_type(CardType.suspect, turn_msg)
+
+        for player in players:
+            if player._selected_suspect == suspect:
+                return player
+
+    def _match_card_with_type(self, card_type, turn_msg):
+        _suspects = {
+            'Scarlet', 'Plum', 'Mustard', 'Green', 'White', 'Peacock'
+        }
+
+        _rooms = {
+            'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'
+        }
+
+        _weapons = {
+            'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
+        }
+
+        if CardType.suspect == card_type:
+            return turn_msg['suggestion']['cards'].intersection(_suspects).pop()
+        elif CardType.room == card_type:
+            return turn_msg['suggestion']['cards'].intersection(_rooms).pop()
+        else:
+            return turn_msg['suggestion']['cards'].intersection(_weapons).pop()
+
+    # server functions
     def _deal_cards(self, num_total_players):
         """
-        Dealing cards to players. This would normally be a server function.
+        Server function: Dealing cards to players.
         :param num_total_players:
         :return: a cards list containing a list of dealt hands.
         """
@@ -313,54 +437,9 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         return hands
 
-    @staticmethod
-    def _get_cards():
+    def _get_position_game_state(self, players):
         """
-        Convenience method for getting all of the cards in this game
-        :rtype : set
-        :return: a set of cards
-        """
-        _suspects = {
-            'Scarlet', 'Plum', 'Mustard', 'Green', 'White', 'Peacock'
-        }
-
-        _rooms = {
-            'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'
-        }
-
-        _weapons = {
-            'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
-        }
-
-        # TODO remove if this comment isn't removed
-        _hallways = {
-            'Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
-            'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12'
-        }
-
-        return _suspects.union(_rooms.union(_weapons))
-
-    def get_marked_cards(self, player):
-        """
-        Retrieves dealt or discovered cards
-
-        :param player: the player whose cards will be retrieved
-        :return: a list of cards
-        """
-
-        cards = []
-        column = player._pad.get_player_table(player.player_id)['c1']
-        i = 0
-        for cell in column:
-            if cell == 1:
-                cards.append(column.index[i])
-            i += 1
-
-        return cards
-
-    def get_game_state(self, players):
-        """
-        Build-up game state by interrogating the player objects in memory
+        Server function: Build-up game state by interrogating the player objects in memory
         :param players:
         :return: game_state containing player positions
         """
@@ -372,50 +451,9 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         return game_state
 
-    def _display_player_position_game_state(self, game_state):
-        """
-        Pretty prints game state
-
-        :param game_state:
-        """
-        print("\ngame_state positions:",
-              textwrap.fill(
-                  str(
-                      [(key, game_state['positions'][key]) for key in sorted(game_state['positions'].keys())]
-                  )
-              )
-        )
-
-    def _get_player_from_suspect(self, players, turn_msg):
-        suspect = self._match_card_with_type(CardType.suspect, turn_msg)
-
-        for player in players:
-            if player._selected_suspect == suspect:
-                return player
-
-    def _match_card_with_type(self, card_type, turn_msg):
-        _suspects = {
-            'Scarlet', 'Plum', 'Mustard', 'Green', 'White', 'Peacock'
-        }
-
-        _rooms = {
-            'Study', 'Hall', 'Lounge', 'Library', 'Billiard', 'Dining', 'Conservatory', 'Ballroom', 'Kitchen'
-        }
-
-        _weapons = {
-            'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
-        }
-
-        if CardType.suspect == card_type:
-            return turn_msg['suggestion']['cards'].intersection(_suspects).pop()
-        elif CardType.room == card_type:
-            return turn_msg['suggestion']['cards'].intersection(_rooms).pop()
-        else:
-            return turn_msg['suggestion']['cards'].intersection(_weapons).pop()
-
     def _arrange_circular_order(self, starting_position, list_to_cycle):
         """
-        Circularly iterate a list from a specified starting position.
+        Server function: Circularly iterate a list from a specified starting position.
         :param starting_position:
         :param list_to_cycle:
         :return: circular order of the list from the position after the starting position
