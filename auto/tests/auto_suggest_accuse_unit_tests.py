@@ -170,6 +170,7 @@ class AutoSuggestAccuseUnitTests(unittest.TestCase):
 
         # region this player taking turns
 
+
     def test_suggest(self):
         # scenario: p04 moves to Hall and suggests Hall, any unknown suspect and weapon because:
         # - Hall is the only next move (currently in Hallway_01) and has been in Study

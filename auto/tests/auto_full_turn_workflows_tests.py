@@ -76,7 +76,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             # build-up game_state for later testing
             game_state['positions'][player.player_id] = player._location
 
-        # get player06 for further testing
+        # get player02 for further testing
         p02 = players[1]
         marked_cards = set()
 
@@ -136,13 +136,16 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         print('\np02 takes a turn to move from a hallway to a room')
         turn_msg = p02.take_turn(game_state)
 
+        #TODO: the current move from turn_msg is now in the prior_moves array so point-out that
+        #the current move is in the prior_moves array
         print("\np02's prior moves in move order are:", p02._prior_moves_stack)
         print('\np02 is suspect {0} who starts in {1} as shown in prior moves stack'.
               format(p02._selected_suspect, p02._get_starting_location(p02._selected_suspect)))
 
         self.assertEqual(p02._get_starting_location(p02._selected_suspect), p02._prior_moves_stack[0])
 
-        print('\np02 is now in the {0} and suggests {1}'.format(turn_msg['move'], turn_msg['suggestion']['cards']))
+        print('\n{0} is now in the {1} room and suggests {2}'
+              .format(p02.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
 
         # this suggestion should cause the suggested suspect to be moved to the suggested room.
         # match suspect to the proper player id
@@ -161,16 +164,65 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # suggestion
         player.update(game_state)
 
-        print('\nplayer id: {0} has suspect: {1} and moves to the {2} room'
+        print('\n{0} is suspect {1} and therefore moves to the {2} room'
               .format(player.player_id, player._selected_suspect, player._location))
 
         self.assertEqual(player._location, room_in_suggestion)
+
+        print('\n server then asks each player if they have the cards that {0} suggested:'
+              .format(p02.player_id))
+
+        # server function: send the turn_msg to each player in order starting from player to the left of the
+        # asking player.
+        request_order = self._arrange_circular_order(2, players)
+        # starting at p03 (player after p02), return responses to suggestions until the answer isn't
+        # no_match or all players announce they don't have any of the cards suggested. No one has
+        # # the suggested card if the loop continues until reaching the asking player (p02).
+        for player in request_order:
+            response = player.update(turn_msg)
+            print('\n {0} responded: {1}'.format(player.player_id, response))
+            if response != 'no_match' and player.player_id != 'p02':
+                print('\tmatch made')
+                game_state = {'move_made': True, 'answer': {'from_player': player.player_id, 'card': response}}
+                print('\ncaller constructs game_state: {}'.format(game_state))
+                break
+            if player.player_id == 'p02':
+                print('no player has any of the suggested cards')
+                game_state = {'move_made': True, 'answer': 'no_match'}
+                print('\ncaller constructs game_state: {}'.format(game_state))
+
+        # caller (server) then sends p02 an update about the player who responded positively and
+        # the card in the response or the server sends the no_match game state.
+        response = p02.update(game_state)
+
+        if game_state['answer'] != 'no_match':
+            print('\nserver sends {0} an update about {1}\'s response. {0} then responds: {2}'
+                  .format(p02.player_id, game_state['answer']['from_player'], response))
+
+            player_with_card = game_state['answer']['from_player']
+            card = game_state['answer']['card']
+            print('\n{0} marks {1} on pad column 1 for {2}'
+                  .format(p02.player_id, card, player_with_card))
+
+            player_sub_table = p02._pad.get_player_table(player_with_card)
+            self.assertTrue(player_sub_table['c1'][card] == 1)
+
+            # caller (server) also sends all other players an update that one of the players had
+            # one of the cards suggested
+            cards_suggested = turn_msg['suggestion']['cards']
+            print('\nThe undirected response sent by the server to all players.')
+            game_state = {'answer': {'from_player': player_with_card, 'has_card': True},
+                          'cards': cards_suggested}
+        else:
+            # no player had any of the suggested cards so send updates with that information
+            pass
+            # response = p02.
 
         # now let's make it the players turn who got moved to a room as a result of a suggestion by another player.
         # In this case, this player makes a suggestion from the current room and doesn't move from that room
         turn_msg = player.take_turn(game_state)
 
-        print('\nThe player {0} stays in the {1} room and suggests {2}'
+        print('\nSince player {0} got to the {1} room as a result of a suggestion, {0} remains there and suggests {2}'
               .format(turn_msg['suggestion']['from_player'],
                       room_in_suggestion, turn_msg['suggestion']['cards']))
 
@@ -360,6 +412,19 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             return turn_msg['suggestion']['cards'].intersection(_rooms).pop()
         else:
             return turn_msg['suggestion']['cards'].intersection(_weapons).pop()
+
+    def _arrange_circular_order(self, starting_position, list_to_cycle):
+        """
+        Circularly iterate a list from a specified starting position.
+        :param starting_position:
+        :param list_to_cycle:
+        :return: circular order of the list from the position after the starting position
+        """
+        items = []
+        for item in range(starting_position, len(list_to_cycle) + starting_position):
+            items.append(list_to_cycle[item % len(list_to_cycle)])
+
+        return items
 
 
 class CardType(Enum):
