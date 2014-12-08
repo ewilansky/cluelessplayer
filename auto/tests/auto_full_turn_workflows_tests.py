@@ -212,9 +212,6 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # the card in the response or the server sends the no_match game state.
         response = p02.update(game_state)
 
-        #TODO: figure-out who just moved to the suggested room and get this player to take the next move. It isn't
-        # necessarily p03 on line 263.
-
         if game_state['answer'] != 'no_match':
             print('\n+server sends {0} an update about {1}\'s response. {0} then responds: {2}'
                   .format(p02.player_id, game_state['answer']['from_player'], response))
@@ -267,13 +264,19 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         print('\n+ {0} takes a turn'.format(players[2].player_id))
         turn_msg = player.take_turn(game_state)
 
-        print('\tSince player {0} got to the {1} room as a result of a suggestion, '
-              '{0} remains there and suggests:\n\t\t{2}'
-              .format(turn_msg['suggestion']['from_player'],
-                      room_in_suggestion, turn_msg['suggestion']['cards']))
+        if player._is_move_from_suggest:
+            print('\tsince player {0} got to the {1} room as a result of a suggestion, '
+                  '{0} remains there and suggests:\n\t\t{2}'
+                  .format(turn_msg['suggestion']['from_player'],
+                          room_in_suggestion, turn_msg['suggestion']['cards']))
+
+            self.assertEqual(turn_msg['move'], '')
+
+        else:
+            print('\tplayer {0} moved to {1} and suggests {2}'
+                  .format(player.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
 
         # proves that the room value is empty when the player takes the turn
-        self.assertEqual(turn_msg['move'], '')
 
     # helper methods
     def _setup_players(self, total_players):

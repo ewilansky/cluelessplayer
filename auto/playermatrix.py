@@ -4,7 +4,7 @@ import pandas as pd
 class PlayerMatrix:
     def __init__(self):
         """
-        Create a player matrix for tracking that player's moves
+        Create a player matrix for tracking a player answers to suggestions.
 
         :var
             _suspects: dictionary
@@ -30,10 +30,10 @@ class PlayerMatrix:
         _cards = _suspects.union(_rooms.union(_weapons))
 
         _tracker = {'c1': pd.Series(int, index=_cards),
-                           'c2': pd.Series(
-                               [set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(),
-                                set(), set(), set(), set(), set(), set(), set(), set(), set()],
-                               index=_cards)}
+                    'c2': pd.Series(
+                        [set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(), set(),
+                         set(), set(), set(), set(), set(), set(), set(), set(), set()],
+                        index=_cards)}
 
         # data frame is a table for this user
         self.table = pd.DataFrame(_tracker)
