@@ -58,6 +58,10 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             # end verify suspect in correct starting position
 
     def test_game_workflow(self):
+
+        """
+        A turn workflow for demonstrating autonomous player features.
+        """
         # create player with 6 players (full player board) and deal cards
         players = self._setup_players(6)
         places_on_board = ['Billiard', 'Kitchen', 'Hallway_06', 'Hallway_10', 'Lounge', 'Conservatory']
@@ -77,11 +81,11 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             # build-up game_state for later testing
             game_state['positions'][player.player_id] = player._location
 
-        print('\n++ get {0} for further testing'.format(players[1].player_id))
+        print('\n+ get {0} for further testing'.format(players[1].player_id))
 
         p02 = players[1]
 
-        print('\tmark-up {0}\'s pad with these cards:'.format(p02.player_id))
+        print('\tmark-up {0}\'s pad with known cards'.format(p02.player_id))
         marked_cards = set()
 
         # fill this player's pad with cards that have been learned. Mark everything except for one card, which will
@@ -108,22 +112,23 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         unknown_cards = all_cards.difference(marked_cards)
         # endregion
 
-        print('\t{0} now knows of {1} cards:'.format(p02.player_id, len(marked_cards)))
-        print('\t{0}'.format(textwrap.fill(str(marked_cards))))
+        print('\t{0} has the following {1} cards marked in its pad:'.format(p02.player_id, len(marked_cards)))
 
-        print('\t{0} doesn\'t know of these cards: {1}.\n'
-              '\tThree are in the middle and one is held by another player).\n'
-              '\tPlease don\'t tell.'
+        indent = ' ' * 30
+        print(textwrap.fill(str(marked_cards), initial_indent=indent, subsequent_indent=indent + ' '))
+
+        print('\n\t{0} doesn\'t know of these cards: {1}.\n'
+              '\tThree are in the middle and one is held by another player. Please don\'t tell.'
               .format(p02.player_id, unknown_cards))
 
         # assert that p02 is in the lounge
         self.assertEqual(p02._location, game_state['positions'][p02.player_id])
 
-        print('\n+++ players moved on the board to the following (static):')
+        print('\n+ players moved on the board to the following static game positions:')
         # display current positions from game state
-        self._display_player_position_game_state(game_state)
+        self._display_player_position_game_state(game_state, indent)
 
-        print('\n +++++ {0} takes a turn'.format(p02.player_id))
+        print('\n+ {0} takes a turn'.format(p02.player_id))
         # p02 will now be told to take turns. If the logic is right and given the current game state,
         # the player should first move to a hallway since currently p02 is in the lounge.
         turn_msg = p02.take_turn(game_state)
@@ -133,7 +138,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         print('\tmove analysis')
         self._display_move_analysis(p02)
 
-        print('\n ++++++ server sends an update to the player to acknowledge the move')
+        print('\n+ server sends an update to the player to acknowledge the move')
         # the turn_msg is received by the caller and the caller returns an acknowledgement that the move was successful
         # the caller sends that success to the player making the move, like so:
         player_msg = p02.update({'move_made': True})
@@ -143,11 +148,12 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         # the caller (server) will then call update for all players. The game_state will now look like this:
         game_state = self._get_position_game_state(players)
-        self._display_player_position_game_state(game_state)
+        print('\tplayers are now in the following positions:')
+        self._display_player_position_game_state(game_state, indent)
 
         # let's have p02 take more turns to see how this player reacts going forward. The player should now
         # move to a room and make a suggestion from that room
-        print('\n +++++++ {0} takes another turn to move from a hallway to a room'.format(p02.player_id))
+        print('\n+ {0} takes another turn to move from a hallway to a room'.format(p02.player_id))
         turn_msg = p02.take_turn(game_state)
 
         print('\tmove analysis')
@@ -155,7 +161,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         self.assertEqual(p02._get_starting_location(p02._selected_suspect), p02._prior_moves_stack[0])
 
-        print('\n{0} is now in the {1} room and suggests {2}'
+        print('\n\t{0} is now in the {1} room and suggests {2}'
               .format(p02.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
 
         # this suggestion should cause the suggested suspect to be moved to the suggested room.
@@ -175,12 +181,12 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # suggestion
         player.update(game_state)
 
-        print('\n{0} is suspect {1} and therefore moves to the {2} room'
+        print('\t{0} is suspect {1} and therefore moves to the {2} room'
               .format(player.player_id, player._selected_suspect, player._location))
 
         self.assertEqual(player._location, room_in_suggestion)
 
-        print('\n server then asks each player if they have the cards that {0} suggested:'
+        print('\n+ server then asks each player if they have the cards that {0} suggested:'
               .format(p02.player_id))
 
         # server function: send the turn_msg to each player in order starting from player to the left of the
@@ -191,11 +197,11 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # the suggested card if the loop continues until reaching the asking player (p02).
         for player in request_order:
             response = player.update(turn_msg)
-            print('\n {0} responded: {1}'.format(player.player_id, response))
+            print('\t {0} responded: {1}'.format(player.player_id, response))
             if response != 'no_match' and player.player_id != 'p02':
-                print('\tmatch made')
+                print('\t\tmatch made')
                 game_state = {'move_made': True, 'answer': {'from_player': player.player_id, 'card': response}}
-                print('\ncaller constructs game_state: {}'.format(game_state))
+                print('\n+ server constructs game_state: {}'.format(game_state))
                 break
             if player.player_id == 'p02':
                 print('no player has any of the suggested cards')
@@ -206,13 +212,16 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # the card in the response or the server sends the no_match game state.
         response = p02.update(game_state)
 
+        #TODO: figure-out who just moved to the suggested room and get this player to take the next move. It isn't
+        # necessarily p03 on line 263.
+
         if game_state['answer'] != 'no_match':
-            print('\nserver sends {0} an update about {1}\'s response. {0} then responds: {2}'
+            print('\n+server sends {0} an update about {1}\'s response. {0} then responds: {2}'
                   .format(p02.player_id, game_state['answer']['from_player'], response))
 
             player_with_card = game_state['answer']['from_player']
             card = game_state['answer']['card']
-            print('\n{0} marks {1} on pad column 1 for {2}'
+            print('\t{0} marks {1} on pad column 1 for {2}'
                   .format(p02.player_id, card, player_with_card))
 
             player_sub_table = p02._pad.get_player_table(player_with_card)
@@ -224,30 +233,30 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             game_state = {'answer': {'from_player': player_with_card, 'has_card': True},
                           'cards': cards_suggested}
 
-            print('\nThe undirected response sent by the server to all players is: {0}'
+            print('\n+ the undirected response sent by the server to all players is:\n\t\t{0}'
                   .format(game_state))
 
             # game_state sent to example player, p03:
             response = players[2].update(game_state)
 
-            print(response)
+            print('\n\t\t{0} acknowledges the update with {1}'.format(players[2].player_id, response))
 
         else:
             # no player had any of the suggested cards so send updates with that information
-            print('\nserver sends the following update to {0}: {1}'
+            print('\n+ server sends the following update to {0}: {1}'
                   .format(p02.player_id, game_state))
 
             response = p02.update(game_state)
 
-            print('\n{0} responds: {1}'.format(p02.player_id, response))
+            print('\t\t{0} responds: {1}'.format(p02.player_id, response))
 
             # server constructs this message for all other players
             game_state = game_state.setdefault('cards', turn_msg['suggestion']['cards'])
 
-            print('\nserver sends all other players this no_match response: {0}', game_state)
+            print('\n+ server sends all other players this no_match response: {0}', game_state)
             # example of how p03 responds
             response = players[2].update(game_state)
-            print('\n{0} acknowledges the update by sending: {1}'.format(player[2].player_id, response))
+            print('\t\t{0} acknowledges the update by sending: {1}'.format(player[2].player_id, response))
 
         # The server now constructs position game_state, which is then sent to the player next in line
         # to take a turn
@@ -255,10 +264,11 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         # now let's make it the players turn who got moved to a room as a result of a suggestion by another player.
         # In this case, this player makes a suggestion from the current room and doesn't move from that room
-        print('{0} takes a turn'.format(players[2].player_id))
+        print('\n+ {0} takes a turn'.format(players[2].player_id))
         turn_msg = player.take_turn(game_state)
 
-        print('\nSince player {0} got to the {1} room as a result of a suggestion, {0} remains there and suggests {2}'
+        print('\tSince player {0} got to the {1} room as a result of a suggestion, '
+              '{0} remains there and suggests:\n\t\t{2}'
               .format(turn_msg['suggestion']['from_player'],
                       room_in_suggestion, turn_msg['suggestion']['cards']))
 
@@ -321,7 +331,6 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             'Knife', 'Wrench', 'Revolver', 'Pipe', 'Rope', 'Candlestick'
         }
 
-        # TODO remove if this comment isn't removed
         _hallways = {
             'Hallway_01', 'Hallway_02', 'Hallway_03', 'Hallway_04', 'Hallway_05', 'Hallway_06', 'Hallway_07',
             'Hallway_08', 'Hallway_09', 'Hallway_10', 'Hallway_11', 'Hallway_12'
@@ -347,23 +356,28 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         return cards
 
-    def _display_player_position_game_state(self, game_state):
+    def _display_player_position_game_state(self, game_state, indent):
         """
         Pretty prints game state
 
         :param game_state:
         """
-        print('\tgame_state positions\n{0}'.format(
-              textwrap.fill(
-                  str(
-                      [(key, game_state['positions'][key]) for key in sorted(game_state['positions'].keys())]
-                  )
-              )
-        ))
+        print(
+            textwrap.fill(
+                str(
+                    [(key, game_state['positions'][key]) for key in sorted(game_state['positions'].keys())]
+                ), initial_indent=indent, subsequent_indent=indent + ' '
+            )
+        )
 
     def _display_move_analysis(self, p02):
+        """
+        Pretty prints the internal state of moves for this player
+        :param p02:
+        :return:
+        """
         # the current move is in the prior_moves array
-        print("\t\tp02's prior moves in move order (includes move just taken):\n", p02._prior_moves_stack)
+        print("\t\tp02's prior moves in move order (includes move just taken):\n\t\t\t", p02._prior_moves_stack)
         print('\t\tp02 is suspect {0} who starts in {1} as shown in prior moves stack'.
               format(p02._selected_suspect, p02._get_starting_location(p02._selected_suspect)))
 
