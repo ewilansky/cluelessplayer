@@ -48,7 +48,7 @@ class AutoCoreUnitTests(unittest.TestCase):
         elif self.player._selected_suspect == 'Plum':
             self.assertTrue(starting_position == 'Hallway_03')
         elif self.player._selected_suspect == 'Green':
-            self.assertTrue(starting_position == 'Hallway_06')
+            self.assertTrue(starting_position == 'Hallway_11')
         else:
             self.assertTrue(starting_position == 'Hallway_05')
 

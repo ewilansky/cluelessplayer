@@ -160,7 +160,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         player_suspect.update(game_state)
 
         print('\t{0} has now moved to the {1}, as shown in this player\'s prior moves:\n\t\t{2}'
-              .format(player_suspect.player_id, room_in_suggestion, player_suspect._prior_moves))
+              .format(player_suspect.player_id, room_in_suggestion, player_suspect._prior_moves_stack))
 
 
         ## Server Stuff - ask each player if they have any of the cards suggested
@@ -181,7 +181,8 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
                 game_state = {'move_made': True, 'answer': {'from_player': player.player_id, 'card': response}}
                 print('\n+ server constructs game_state: {}'.format(game_state))
                 break
-            if player.player_id == 'p02':
+            # the last player in request order was the player making the suggestion.
+            if player == request_order[-1]:
                 print('no player has any of the suggested cards')
                 game_state = {'move_made': True, 'answer': 'no_match'}
                 print('\ncaller constructs game_state: {}'.format(game_state))
@@ -191,7 +192,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         response = p02.update(game_state)
 
         if game_state['answer'] != 'no_match':
-            print('\n+server sends {0} an update about {1}\'s response. {0} then responds: {2}'
+            print('\n+ server sends {0} an update about {1}\'s response. {0} then responds: {2}'
                   .format(p02.player_id, game_state['answer']['from_player'], response))
 
             player_with_card = game_state['answer']['from_player']
@@ -213,15 +214,11 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
             print('\n+ server sends undirected card response update to all players.')
 
-            for player in players:
-                player.update(game_state)
-
-                if player.player_id == player_suspect.player_id:
-                    # shows what the player in the suggestion does as a result of the update is shown here
-                    print('\t{0} is suspect {1} and therefore moves to the {2} room'
-                          .format(player.player_id, player._selected_suspect, player._location))
-
-                    self.assertEqual(player._location, room_in_suggestion)
+            for player in request_order:
+                # server doesn't need to ask the player making the suggestion (last player in request_order
+                if player != request_order[-1]:
+                    response = player.update(game_state)
+                    print('\t {0} responds to the update with {1}'.format(player.player_id, response))
 
         else:
             # no player had any of the suggested cards so send updates with that information
