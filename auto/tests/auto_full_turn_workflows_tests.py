@@ -126,6 +126,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # display current positions from game state
         self._display_player_position_game_state(game_state, indent)
 
+
         # server tells p02 to take a turn. The player should now
         # move to a room and make a suggestion from that room
         print('\n+ {0} takes a turn to move from a hallway to a room'.format(p02.player_id))
@@ -133,16 +134,12 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
 
         print('\tmove analysis')
         self._display_move_analysis(p02)
-
         self.assertEqual(p02._get_starting_location(p02._selected_suspect), p02._prior_moves_stack[0])
 
         print('\n\t{0} is now in the {1} room and suggests {2}'
               .format(p02.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
 
-        #print(textwrap.fill('+ demonstrate how the suggestion causes the player who has the suspect in the suggestion'
-         #                   ' to move to the suggested room.', initial_indent=indent, subsequent_indent=indent + ' '))
-
-        # # Server Stuff - constructing the next game_state ##
+        # server Stuff - constructing the next game_state ##
         # this suggestion should cause the suggested suspect to be moved to the suggested room.
         # match suspect to the proper player id
         player_suspect = self._get_player_from_suspect(players, turn_msg)
@@ -159,8 +156,8 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # server sends game_state positions to the suspect in the suggestion so the suspect moves to the suggested room
         player_suspect.update(game_state)
 
-        print('\t{0} has now moved to the {1}, as shown in this player\'s prior moves:\n\t\t{2}'
-              .format(player_suspect.player_id, room_in_suggestion, player_suspect._prior_moves_stack))
+        print('\t{0} has now moved to the {1}, because player is suspect: {2}'
+              .format(player_suspect.player_id, room_in_suggestion, player_suspect._selected_suspect))
 
 
         ## Server Stuff - ask each player if they have any of the cards suggested
@@ -240,6 +237,131 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # The server will then construct position game_state, which is first sent as an update to all players
         # Then, game_state is explicitly sent to the next player in line in a call to take_turn and so on...
 
+    def test_demonstration_workflow_with_client_team(self):
+        """
+        A demonstration of integration between the Computer Player and Client teams.
+        """
+
+        # create player with 6 players (full player board) and deal cards
+        players = self._setup_six_players_static()
+        game_state = {'positions': {}}
+
+        print('Ethan shows deal configuration:')
+        print('+ deal and select suspects')
+        print('\tdealt cards and suspects selected/assigned:')
+        for player in players:
+            cards = self._get_marked_cards(player)
+            self.assertEqual(len(cards), 3)
+            print('\t\t{0} dealt: {1} and selected suspect: {2}'.
+                  format(player.player_id, str(cards), player._selected_suspect))
+            cards.clear()
+
+            # build-up game_state for later testing
+            game_state['positions'][player.player_id] = player._location
+
+        print('\nCandace shows the original player positions and cards for p02 on the board')
+
+        print('\nEthan relocates all players and prints this information.')
+        # move the players around on the board
+        new_positions = ['Billiard', 'Kitchen', 'Hallway_06', 'Hallway_10', 'Lounge', 'Conservatory']
+        for player in players:
+            new_position = new_positions.pop()
+            player._location = new_position
+            player._prior_moves.add(new_position)
+            player._prior_moves_stack.append(new_position)
+
+        indent = '    '
+        game_state = self._get_position_game_state(players)
+        self._display_player_position_game_state(game_state, indent)
+
+        print('\nCandace demonstrates how the players appear on the board following this explicit repositioning')
+
+        # *** Hopefully the player moves to hallway_05. If not, Ethan will rerun the code to here
+        print('\nEthan shows p02 moving to an available position (lounge to hallway05).')
+        p02 = players[1]
+
+        # artificially adding Hallway_02 to p02's moves to ensure p02 moves to Hallway_05 next
+        player._prior_moves.add('Hallway_02')
+        p02._prior_moves_stack.append('Hallway_02')
+
+        # server tells p02 to take a turn. The player should now
+        # move to a room and make a suggestion from that room
+        print('\n+ {0} takes a turn to move from a room to a hallway'.format(p02.player_id))
+        turn_msg = p02.take_turn(game_state)
+
+        print('\tmove analysis')
+        self._display_move_analysis(p02)
+
+        print('\n+ players are now on the board in the following positions:')
+        game_state = self._get_position_game_state(players)
+        # display current positions from game state
+        self._display_player_position_game_state(game_state, indent)
+
+        print('\nCandace shows p02 (Peacock) moving to the hallway in the move analysis')
+
+        print('\nEthan has p02 take another turn to move into a room (Dining room in this case)')
+
+        # server tells p02 to take a turn. The player should now
+        # move to a room and make a suggestion from that room
+        print('\n+ {0} takes a turn to move from a hallway to a room'.format(p02.player_id))
+        turn_msg = p02.take_turn(game_state)
+
+        print('\tmove analysis')
+        game_state = self._get_position_game_state(players)
+        self._display_move_analysis(p02)
+
+        print('\nCandace shows p02 moving to the Dining room.')
+
+        print('\nEthan shows the suggestion p02 makes and the result of that suggestion')
+        print('\t{0} is now in the {1} room and suggests {2}'
+              .format(p02.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
+
+
+        # server Stuff - constructing the next game_state ##
+        # this suggestion should cause the suggested suspect to be moved to the suggested room.
+        # match suspect to the proper player id
+        player_suspect = self._get_player_from_suspect(players, turn_msg)
+        # identify the room in the suggestion
+        room_in_suggestion = self._match_card_with_type(CardType.room, turn_msg)
+
+        # The caller (server) has the responsibility for completing the action of changing the position of the
+        # player suspect in the suggestion and sending that through game_state. When the player in the suggestion
+        # receives the position update, it will automatically change its position.
+        game_state = self._get_position_game_state(players)
+        # server adjusts the game_state var for the one player whose suspect was in the suggestion
+        game_state['positions'][player_suspect.player_id] = room_in_suggestion
+
+        # server sends game_state positions to the suspect in the suggestion so the suspect moves to the suggested room
+        player_suspect.update(game_state)
+
+        # server Stuff - constructing the next game_state ##
+        # this suggestion should cause the suggested suspect to be moved to the suggested room.
+        # match suspect to the proper player id
+        player_suspect = self._get_player_from_suspect(players, turn_msg)
+        # identify the room in the suggestion
+        room_in_suggestion = self._match_card_with_type(CardType.room, turn_msg)
+
+        # The caller (server) has the responsibility for completing the action of changing the position of the
+        # player suspect in the suggestion and sending that through game_state. When the player in the suggestion
+        # receives the position update, it will automatically change its position.
+        game_state = self._get_position_game_state(players)
+        # server adjusts the game_state var for the one player whose suspect was in the suggestion
+        game_state['positions'][player_suspect.player_id] = room_in_suggestion
+
+        # server sends game_state positions to the suspect in the suggestion so the suspect moves to the suggested room
+        player_suspect.update(game_state)
+
+        print('\t{0} has now moved to the {1}, because player is suspect: {2}'
+             .format(player_suspect.player_id, room_in_suggestion, player_suspect._selected_suspect))
+
+        if player_suspect.player_id != 'p03':
+            print('\n for demonstration, these values are changed from random ones just presented to these values:')
+            print('\t{0} has now moved to the {1}, because player is suspect: {2}'
+                    .format('p03', room_in_suggestion, 'Mustard'))
+
+        print('\nCandace show\'s that Mustard moves to the Dining room as a result of the suggestion, which is p03')
+
+        print('\nCandace will also show suggested card, accusation and win')
 
     # helper methods
     def _setup_players(self, total_players):
@@ -266,14 +388,32 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             available_suspects.remove(self.player._selected_suspect)
 
             # deal this player cards. Must start x at 1 here since the list of dealt
-            # hands is a list of lists (zero-based index). The first hand (0 in list) was dealt to the
-            # human player so start at 1.
+            # hands is a list of lists (zero-based index).
             self.player.receive_cards(list_of_dealt_hands[x - 1])
 
             # the additional hands of cards will be for the human players. Assigning these cards is out of
             # the control of the computer player and is not part of testing. Just needed to consider
             # human players when determining how many cards to deal to the computer players. Assumption is
             # that there is at least  human player for test setup purposes.
+            players.append(self.player)
+
+        return players
+
+    def _setup_six_players_static(self):
+        """
+        For demonstration with client team. Setup players with specific suspects and cards
+        """
+
+        players = []
+        available_suspects = ['White', 'Scarlet', 'Green', 'Mustard', 'Peacock', 'Plum']
+        list_of_cards = ['Billiard', 'Wrench', 'Candlestick', 'Pipe', 'Library', 'Green', 'Rope', 'Peacock', 'Lounge',
+                         'Dining', 'Scarlet', 'Conservatory', 'Ballroom', 'Hall', 'Plum', 'White', 'Revolver', 'Study']
+        for x in range(1, 7):
+            self.player = Player('p0' + str(x), [available_suspects.pop()], 6)
+
+            # pop cards off the list in the order shown for list_of_cards
+            self.player.receive_cards([list_of_cards.pop(), list_of_cards.pop(), list_of_cards.pop()])
+
             players.append(self.player)
 
         return players
