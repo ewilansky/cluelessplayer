@@ -64,7 +64,6 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         """
         # create player with 6 players (full player board) and deal cards
         players = self._setup_players(6)
-        places_on_board = ['Billiard', 'Kitchen', 'Hallway_06', 'Hallway_10', 'Lounge', 'Conservatory']
         game_state = {'positions': {}}
 
         print('+ deal and select suspects')
@@ -76,8 +75,7 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
                   format(player.player_id, str(cards), player._selected_suspect))
             cards.clear()
 
-            # move players to some places on the board
-            player._location = places_on_board.pop()
+
             # build-up game_state for later testing
             game_state['positions'][player.player_id] = player._location
 
@@ -124,36 +122,13 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         # assert that p02 is in the lounge
         self.assertEqual(p02._location, game_state['positions'][p02.player_id])
 
-        print('\n+ players moved on the board to the following static game positions:')
+        print('\n+ players are on the board in the following starting game positions:')
         # display current positions from game state
         self._display_player_position_game_state(game_state, indent)
 
-        print('\n+ {0} takes a turn'.format(p02.player_id))
-        # p02 will now be told to take turns. If the logic is right and given the current game state,
-        # the player should first move to a hallway since currently p02 is in the lounge.
-        turn_msg = p02.take_turn(game_state)
-        self.assertIn(turn_msg['move'], ['Hallway_02', 'Hallway_05'])
-        print('\tp02 requests to move to {0}'.format(turn_msg['move']))
-
-        print('\tmove analysis')
-        self._display_move_analysis(p02)
-
-        print('\n+ server sends an update to the player to acknowledge the move')
-        # the turn_msg is received by the caller and the caller returns an acknowledgement that the move was successful
-        # the caller sends that success to the player making the move, like so:
-        player_msg = p02.update({'move_made': True})
-
-        # the player tells the caller that the turn is complete
-        self.assertEqual(player_msg, {'turn_complete': True})
-
-        # the caller (server) will then call update for all players. The game_state will now look like this:
-        game_state = self._get_position_game_state(players)
-        print('\tplayers are now in the following positions:')
-        self._display_player_position_game_state(game_state, indent)
-
-        # let's have p02 take more turns to see how this player reacts going forward. The player should now
+        # server tells p02 to take a turn. The player should now
         # move to a room and make a suggestion from that room
-        print('\n+ {0} takes another turn to move from a hallway to a room'.format(p02.player_id))
+        print('\n+ {0} takes a turn to move from a hallway to a room'.format(p02.player_id))
         turn_msg = p02.take_turn(game_state)
 
         print('\tmove analysis')
@@ -164,29 +139,32 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
         print('\n\t{0} is now in the {1} room and suggests {2}'
               .format(p02.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
 
+        #print(textwrap.fill('+ demonstrate how the suggestion causes the player who has the suspect in the suggestion'
+         #                   ' to move to the suggested room.', initial_indent=indent, subsequent_indent=indent + ' '))
+
+        # # Server Stuff - constructing the next game_state ##
         # this suggestion should cause the suggested suspect to be moved to the suggested room.
         # match suspect to the proper player id
-        player = self._get_player_from_suspect(players, turn_msg)
+        player_suspect = self._get_player_from_suspect(players, turn_msg)
         # identify the room in the suggestion
         room_in_suggestion = self._match_card_with_type(CardType.room, turn_msg)
 
         # The caller (server) has the responsibility for completing the action of changing the position of the
         # player suspect in the suggestion and sending that through game_state. When the player in the suggestion
-        # receives the position update, it will automatically change its position
+        # receives the position update, it will automatically change its position.
         game_state = self._get_position_game_state(players)
-        # adjust the one player's position who was in the suggestion
-        game_state['positions'][player.player_id] = room_in_suggestion
+        # server adjusts the game_state var for the one player whose suspect was in the suggestion
+        game_state['positions'][player_suspect.player_id] = room_in_suggestion
 
-        # send position update to all players. In this case, show new location information for the player in the
-        # suggestion
-        player.update(game_state)
+        # server sends game_state positions to the suspect in the suggestion so the suspect moves to the suggested room
+        player_suspect.update(game_state)
 
-        print('\t{0} is suspect {1} and therefore moves to the {2} room'
-              .format(player.player_id, player._selected_suspect, player._location))
+        print('\t{0} has now moved to the {1}, as shown in this player\'s prior moves:\n\t\t{2}'
+              .format(player_suspect.player_id, room_in_suggestion, player_suspect._prior_moves))
 
-        self.assertEqual(player._location, room_in_suggestion)
 
-        print('\n+ server then asks each player if they have the cards that {0} suggested:'
+        ## Server Stuff - ask each player if they have any of the cards suggested
+        print('\n+ server then asks each player (using turn_msg from {0}) if they have the cards that {0} suggested:'
               .format(p02.player_id))
 
         # server function: send the turn_msg to each player in order starting from player to the left of the
@@ -233,10 +211,17 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             print('\n+ the undirected response sent by the server to all players is:\n\t\t{0}'
                   .format(game_state))
 
-            # game_state sent to example player, p03:
-            response = players[2].update(game_state)
+            print('\n+ server sends undirected card response update to all players.')
 
-            print('\n\t\t{0} acknowledges the update with {1}'.format(players[2].player_id, response))
+            for player in players:
+                player.update(game_state)
+
+                if player.player_id == player_suspect.player_id:
+                    # shows what the player in the suggestion does as a result of the update is shown here
+                    print('\t{0} is suspect {1} and therefore moves to the {2} room'
+                          .format(player.player_id, player._selected_suspect, player._location))
+
+                    self.assertEqual(player._location, room_in_suggestion)
 
         else:
             # no player had any of the suggested cards so send updates with that information
@@ -255,28 +240,9 @@ class AutoFullTurnWorkflowsUnitTests(unittest.TestCase):
             response = players[2].update(game_state)
             print('\t\t{0} acknowledges the update by sending: {1}'.format(player[2].player_id, response))
 
-        # The server now constructs position game_state, which is then sent to the player next in line
-        # to take a turn
-        game_state = self._get_position_game_state(players)
+        # The server will then construct position game_state, which is first sent as an update to all players
+        # Then, game_state is explicitly sent to the next player in line in a call to take_turn and so on...
 
-        # now let's make it the players turn who got moved to a room as a result of a suggestion by another player.
-        # In this case, this player makes a suggestion from the current room and doesn't move from that room
-        print('\n+ {0} takes a turn'.format(players[2].player_id))
-        turn_msg = player.take_turn(game_state)
-
-        if player._is_move_from_suggest:
-            print('\tsince player {0} got to the {1} room as a result of a suggestion, '
-                  '{0} remains there and suggests:\n\t\t{2}'
-                  .format(turn_msg['suggestion']['from_player'],
-                          room_in_suggestion, turn_msg['suggestion']['cards']))
-
-            self.assertEqual(turn_msg['move'], '')
-
-        else:
-            print('\tplayer {0} moved to {1} and suggests {2}'
-                  .format(player.player_id, turn_msg['move'], turn_msg['suggestion']['cards']))
-
-        # proves that the room value is empty when the player takes the turn
 
     # helper methods
     def _setup_players(self, total_players):
